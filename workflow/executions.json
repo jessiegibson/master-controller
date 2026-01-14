@@ -1,0 +1,77 @@
+[
+  {
+    "id": "exec_requirements_gatherer_20260103_001601",
+    "agent_id": "requirements_gatherer",
+    "status": "started",
+    "timestamp": "2026-01-03T00:16:01.843997",
+    "result": null,
+    "error": null
+  },
+  {
+    "id": "exec_requirements_gatherer_20260103_001601",
+    "agent_id": "requirements_gatherer",
+    "status": "failed",
+    "timestamp": "2026-01-03T00:16:01.844190",
+    "result": null,
+    "error": "Prompt file not found: /Users/jag/workspace/github.com/jessiegibson/agents/agents/prompts/requirements-gatherer.md"
+  },
+  {
+    "id": "exec_requirements_gatherer_20260103_001623",
+    "agent_id": "requirements_gatherer",
+    "status": "started",
+    "timestamp": "2026-01-03T00:16:23.956165",
+    "result": null,
+    "error": null
+  },
+  {
+    "id": "exec_requirements_gatherer_20260103_001623",
+    "agent_id": "requirements_gatherer",
+    "status": "failed",
+    "timestamp": "2026-01-03T00:16:23.956500",
+    "result": null,
+    "error": "Prompt file not found: prompts/requirements-gatherer.md"
+  },
+  {
+    "id": "exec_requirements_gatherer_20260103_001819",
+    "agent_id": "requirements_gatherer",
+    "status": "started",
+    "timestamp": "2026-01-03T00:18:19.471489",
+    "result": null,
+    "error": null
+  },
+  {
+    "id": "exec_requirements_gatherer_20260103_001841",
+    "agent_id": "requirements_gatherer",
+    "status": "completed",
+    "timestamp": "2026-01-03T00:18:41.005513",
+    "result": {
+      "agent_id": "requirements_gatherer",
+      "content": "I've analyzed your input and identified several areas where I need clarification before generating the complete requirements document. Let me start with the most critical questions:\n\n## Critical Questions (Blocking)\n\n1. **Which financial institutions should be supported for CSV/QFX import initially?**\n   - Context: Different banks use vastly different CSV formats and field names. Parser logic must be built for specific formats.\n   - Examples: Chase uses \"Description,Amount,Date\" while Bank of America uses \"Posted Date,Reference Number,Payee,Address,Amount\"\n   - My assumption if unanswered: Chase, Bank of America, Wells Fargo, Amex, Discover (top 5 US institutions)\n\n2. **For PDF statement parsing, which specific bank PDF formats should be supported?**\n   - Context: PDF parsing is complex and bank-specific. Each institution has different layouts, fonts, and table structures.\n   - This may require OCR or specific PDF text extraction logic per bank.\n   - Routed to: Human Proxy (may need technical feasibility assessment)\n\n3. **For Schedule C mapping, should the app support multiple businesses/sole proprietorships, or single business only for MVP?**\n   - Context: Affects data model (single vs multi-tenant), report generation complexity, and encryption key management.\n   - Single business: Simpler data model, one set of categories\n   - Multiple businesses: Need business entity separation, category sets per business\n   - Routed to: Human Proxy (may need CPA input for tax compliance)\n\n4. **For encryption key management, what's your preferred approach?**\n   - Master password (user must remember, no recovery if lost)\n   - Recovery phrase like crypto wallets (12/24 words, lose phrase = lose data)  \n   - Key derivation from password with optional recovery questions\n   - Context: This is a foundational architecture decision affecting user experience and security model.\n\n## Important Questions (Should Resolve)\n\n5. **What date ranges should reports cover?**\n   - Calendar year only, tax year only, or custom date ranges?\n   - Should historical data from previous years be supported?\n\n6. **For automatic categorization, should the ML model:**\n   - Train only on user's own transaction history?\n   - Use a pre-trained model with common business expense categories?\n   - Both (pre-trained + user customization)?\n\n7. **Should recurring transactions be auto-detected and auto-categorized?**\n   - Context: Helps with automation but requires pattern detection logic.\n\n8. **What level of transaction editing should be supported?**\n   - Read-only (import and categorize only)?\n   - Edit descriptions and amounts?\n   - Add manual transactions?\n   - Delete/hide transactions?\n\n## Assumptions Made (Minor Items)\n\n- **A-001**: Single user per installation. No multi-user support. (Risk: low)\n- **A-002**: US tax jurisdiction only. No international tax code support. (Risk: low)  \n- **A-003**: English language only for MVP. (Risk: low)\n- **A-004**: Command-line interface only. No GUI for MVP. (Risk: low)\n- **A-005**: DuckDB file stored locally in user's home directory or configurable path. (Risk: low)\n\n## Technical Architecture Questions (For Specialist Review)\n\nThese questions may need Rust engineering expertise:\n\n9. **For ML categorization in Rust, preferred approach?**\n   - Use Python subprocess with scikit-learn/pandas?\n   - Pure Rust ML crates (candle, smartcore)?\n   - Simple rule-based system for MVP?\n   - Context: Affects dependencies, binary size, and cross-platform compatibility.\n\n10. **For PDF parsing, preferred Rust crate?**\n    - pdf-extract (simple text extraction)\n    - lopdf (more control, complex)\n    - External tool like pdftotext?\n    - Context: Different crates have different capabilities and maintenance status.\n\nPlease answer the critical questions (1-4) so I can proceed with generating the complete requirements document. The technical questions (9-10) can be deferred to the Architecture phase if you prefer.",
+      "usage": {
+        "input_tokens": 3337,
+        "output_tokens": 941
+      },
+      "prompt_tokens": 3221,
+      "model": "claude-sonnet-4-20250514",
+      "stop_reason": "end_turn",
+      "artifact_path": "workflow/artifacts/requirements_gatherer/requirements_gatherer_output.md"
+    },
+    "error": null
+  },
+  {
+    "id": "exec_requirements_orchestrator_20260103_003657",
+    "agent_id": "requirements_orchestrator",
+    "status": "started",
+    "timestamp": "2026-01-03T00:36:57.038289",
+    "result": null,
+    "error": null
+  },
+  {
+    "id": "exec_requirements_orchestrator_20260103_003657",
+    "agent_id": "requirements_orchestrator",
+    "status": "failed",
+    "timestamp": "2026-01-03T00:36:57.039558",
+    "result": null,
+    "error": "Agent 'requirements_orchestrator' not found in configuration"
+  }
+]

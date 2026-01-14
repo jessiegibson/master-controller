@@ -1,0 +1,14 @@
+# Agent Orchestrator Dependencies
+# Minimal MVP requirements for running single-agent workflows
+
+# Claude API client
+anthropic>=0.39.0
+
+# YAML parsing for agent configs and prompts
+pyyaml>=6.0.1
+
+# Rich console output (optional, for better logs)
+rich>=13.7.0
+
+# Python-dotenv for API key management
+python-dotenv>=1.0.0

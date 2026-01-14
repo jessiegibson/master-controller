@@ -1,0 +1,1424 @@
+# Agent Orchestrator Configuration
+# Registry of all agents with metadata, inputs, outputs, and dependencies
+
+orchestrator:
+  name: "Finance CLI Agent Orchestrator"
+  version: "0.1.0"
+  llm_provider: "claude"  # claude | gemini | openai (MVP: claude only)
+  llm_model: "claude-sonnet-4-20250514"
+  logging: "file"  # file | matrix (MVP: file only)
+  log_path: "/logs"
+  kanban_db: "/kanban/tasks.db"
+
+# Agent Definitions
+# Status: active | inactive | planned
+# Phase: product_definition | architecture | development | quality | validation | project_management | meta
+
+agents:
+
+  # =============================================================================
+  # PHASE 1: PRODUCT DEFINITION
+  # =============================================================================
+
+  requirements_gatherer:
+    name: "Requirements Gatherer"
+    status: active
+    phase: product_definition
+    prompt_file: "/agents/prompts/requirements-gatherer.md"
+    description: "Transforms messy project inputs into structured, actionable requirements"
+    
+    inputs:
+      - name: project_name
+        type: string
+        required: true
+        source: orchestrator
+      - name: project_description
+        type: string
+        required: true
+        source: orchestrator
+      - name: user_freeform_input
+        type: string
+        required: true
+        source: user
+      - name: existing_docs
+        type: file_list
+        required: false
+        source: filesystem
+        file_types: [".md", ".txt", ".pdf"]
+    
+    outputs:
+      - name: requirements_markdown
+        type: file
+        format: markdown
+        path: "/docs/requirements/requirements-v{version}.md"
+        repo: finance-cli
+      - name: requirements_yaml
+        type: file
+        format: yaml
+        path: "/docs/requirements/requirements-v{version}.yaml"
+        repo: finance-cli
+    
+    dependencies:
+      runs_after: []  # First agent in workflow
+      runs_before:
+        - product_roadmap_planner
+        - system_architect
+      can_consult:
+        - human_proxy  # For specialist questions in MVP
+    
+    approval_gate:
+      required: true
+      approver: human
+    
+    config:
+      max_questions_per_batch: 5
+      assumption_risk_threshold: medium  # Flag for review if >= this level
+
+  product_roadmap_planner:
+    name: "Product Roadmap Planner"
+    status: active
+    phase: product_definition
+    prompt_file: "/agents/prompts/product-roadmap-planner.md"
+    description: "Creates phased roadmap with MVP scope, milestones, and sprint definitions"
+    
+    inputs:
+      - name: requirements_yaml
+        type: file
+        required: true
+        source: requirements_gatherer
+      - name: requirements_markdown
+        type: file
+        required: false
+        source: requirements_gatherer
+    
+    outputs:
+      - name: roadmap_markdown
+        type: file
+        format: markdown
+        path: "/docs/roadmap/roadmap-v{version}.md"
+        repo: finance-cli
+      - name: roadmap_yaml
+        type: file
+        format: yaml
+        path: "/docs/roadmap/roadmap-v{version}.yaml"
+        repo: finance-cli
+      - name: sprint_definitions
+        type: file
+        format: yaml
+        path: "/docs/roadmap/sprints/sprint-{n}.yaml"
+        repo: finance-cli
+    
+    dependencies:
+      runs_after:
+        - requirements_gatherer
+      runs_before:
+        - system_architect
+        - cli_ux_designer
+      can_consult:
+        - human_proxy
+    
+    approval_gate:
+      required: true
+      approver: human
+
+  cli_ux_designer:
+    name: "CLI UX Designer"
+    status: active
+    phase: product_definition
+    prompt_file: "/agents/prompts/cli-ux-designer.md"
+    description: "Designs command structure, flags, output formats, and user flows"
+    
+    inputs:
+      - name: requirements_yaml
+        type: file
+        required: true
+        source: requirements_gatherer
+      - name: roadmap_yaml
+        type: file
+        required: true
+        source: product_roadmap_planner
+    
+    outputs:
+      - name: cli_specification
+        type: file
+        format: markdown
+        path: "/docs/design/cli-specification.md"
+        repo: finance-cli
+      - name: command_reference
+        type: file
+        format: yaml
+        path: "/docs/design/commands.yaml"
+        repo: finance-cli
+    
+    dependencies:
+      runs_after:
+        - requirements_gatherer
+        - product_roadmap_planner
+      runs_before:
+        - system_architect
+        - cli_developer
+      can_consult:
+        - human_proxy
+    
+    approval_gate:
+      required: true
+      approver: human
+
+  # =============================================================================
+  # PHASE 2: ARCHITECTURE
+  # =============================================================================
+
+  system_architect:
+    name: "System Architect"
+    status: active
+    phase: architecture
+    prompt_file: "/agents/prompts/system-architect.md"
+    description: "Produces high-level component design, module boundaries, and data flow"
+    
+    inputs:
+      - name: requirements_yaml
+        type: file
+        required: true
+        source: requirements_gatherer
+      - name: roadmap_yaml
+        type: file
+        required: true
+        source: product_roadmap_planner
+      - name: cli_specification
+        type: file
+        required: true
+        source: cli_ux_designer
+    
+    outputs:
+      - name: architecture_decision_records
+        type: file
+        format: markdown
+        path: "/docs/architecture/adr/adr-{n}.md"
+        repo: finance-cli
+      - name: component_diagram
+        type: file
+        format: markdown  # Mermaid diagram in markdown
+        path: "/docs/architecture/components.md"
+        repo: finance-cli
+      - name: architecture_yaml
+        type: file
+        format: yaml
+        path: "/docs/architecture/architecture.yaml"
+        repo: finance-cli
+    
+    dependencies:
+      runs_after:
+        - requirements_gatherer
+        - product_roadmap_planner
+        - cli_ux_designer
+      runs_before:
+        - data_architect
+        - security_architect
+        - ml_architect
+      can_consult:
+        - human_proxy
+        - staff_engineer_rust
+    
+    approval_gate:
+      required: true
+      approver: human
+
+  data_architect:
+    name: "Data Architect"
+    status: active
+    phase: architecture
+    prompt_file: "/agents/prompts/data-architect.md"
+    description: "Designs DuckDB schema, JSON config structures, and data normalization rules"
+    
+    inputs:
+      - name: requirements_yaml
+        type: file
+        required: true
+        source: requirements_gatherer
+      - name: architecture_yaml
+        type: file
+        required: true
+        source: system_architect
+    
+    outputs:
+      - name: schema_definitions
+        type: file
+        format: sql
+        path: "/docs/architecture/schema.sql"
+        repo: finance-cli
+      - name: data_dictionary
+        type: file
+        format: markdown
+        path: "/docs/architecture/data-dictionary.md"
+        repo: finance-cli
+      - name: config_schemas
+        type: file
+        format: yaml
+        path: "/docs/architecture/config-schemas.yaml"
+        repo: finance-cli
+    
+    dependencies:
+      runs_after:
+        - system_architect
+      runs_before:
+        - duckdb_integration_developer
+        - parser_developer
+      can_consult:
+        - human_proxy
+        - system_architect
+    
+    approval_gate:
+      required: true
+      approver: human
+
+  security_architect:
+    name: "Security Architect"
+    status: active
+    phase: architecture
+    prompt_file: "/agents/prompts/security-architect.md"
+    description: "Defines encryption flow, key management, threat model, and secure coding requirements"
+    
+    inputs:
+      - name: requirements_yaml
+        type: file
+        required: true
+        source: requirements_gatherer
+      - name: architecture_yaml
+        type: file
+        required: true
+        source: system_architect
+    
+    outputs:
+      - name: security_specification
+        type: file
+        format: markdown
+        path: "/docs/architecture/security-spec.md"
+        repo: finance-cli
+      - name: threat_model
+        type: file
+        format: markdown
+        path: "/docs/architecture/threat-model.md"
+        repo: finance-cli
+      - name: encryption_workflow
+        type: file
+        format: yaml
+        path: "/docs/architecture/encryption-workflow.yaml"
+        repo: finance-cli
+    
+    dependencies:
+      runs_after:
+        - system_architect
+      runs_before:
+        - encryption_developer
+      can_consult:
+        - human_proxy
+        - staff_engineer_rust
+    
+    approval_gate:
+      required: true
+      approver: human
+
+  ml_architect:
+    name: "ML Architect"
+    status: active
+    phase: architecture
+    prompt_file: "/agents/prompts/ml-architect.md"
+    description: "Designs ML integration architecture for future implementation"
+    
+    inputs:
+      - name: requirements_yaml
+        type: file
+        required: true
+        source: requirements_gatherer
+      - name: architecture_yaml
+        type: file
+        required: true
+        source: system_architect
+      - name: data_dictionary
+        type: file
+        required: true
+        source: data_architect
+    
+    outputs:
+      - name: ml_system_design
+        type: file
+        format: markdown
+        path: "/docs/architecture/ml-system-design.md"
+        repo: finance-cli
+      - name: ml_integration_points
+        type: file
+        format: yaml
+        path: "/docs/architecture/ml-integration.yaml"
+        repo: finance-cli
+    
+    dependencies:
+      runs_after:
+        - system_architect
+        - data_architect
+      runs_before: []  # ML is future phase, doesn't block development
+      can_consult:
+        - human_proxy
+        - data_architect
+    
+    approval_gate:
+      required: true
+      approver: human
+
+  # =============================================================================
+  # PHASE 3: DEVELOPMENT
+  # =============================================================================
+
+  rust_scaffolder:
+    name: "Rust Scaffolder"
+    status: active
+    phase: development
+    prompt_file: "/agents/prompts/rust-scaffolder.md"
+    description: "Generates project structure, Cargo.toml, and module boilerplate with heavy comments"
+    
+    inputs:
+      - name: architecture_yaml
+        type: file
+        required: true
+        source: system_architect
+      - name: cli_specification
+        type: file
+        required: true
+        source: cli_ux_designer
+    
+    outputs:
+      - name: cargo_toml
+        type: file
+        format: toml
+        path: "/Cargo.toml"
+        repo: finance-cli
+      - name: project_structure
+        type: directory
+        path: "/src/"
+        repo: finance-cli
+    
+    dependencies:
+      runs_after:
+        - system_architect
+        - cli_ux_designer
+      runs_before:
+        - parser_developer
+        - categorization_engine_developer
+        - financial_calculator_developer
+        - duckdb_integration_developer
+        - encryption_developer
+        - cli_developer
+      can_consult:
+        - staff_engineer_rust
+        - debugger
+    
+    approval_gate:
+      required: false
+      approver: code_reviewer
+
+  parser_developer:
+    name: "Parser Developer"
+    status: active
+    phase: development
+    prompt_file: "/agents/prompts/parser-developer.md"
+    description: "Builds CSV, QFX, PDF parsers with institution-specific format detection"
+    
+    inputs:
+      - name: architecture_yaml
+        type: file
+        required: true
+        source: system_architect
+      - name: data_dictionary
+        type: file
+        required: true
+        source: data_architect
+      - name: project_structure
+        type: directory
+        required: true
+        source: rust_scaffolder
+    
+    outputs:
+      - name: parser_modules
+        type: file_list
+        format: rust
+        path: "/src/parsers/"
+        repo: finance-cli
+    
+    dependencies:
+      runs_after:
+        - rust_scaffolder
+        - data_architect
+      runs_before:
+        - test_developer
+      can_consult:
+        - staff_engineer_rust
+        - debugger
+        - data_architect
+    
+    approval_gate:
+      required: false
+      approver: code_reviewer
+
+  categorization_engine_developer:
+    name: "Categorization Engine Developer"
+    status: active
+    phase: development
+    prompt_file: "/agents/prompts/categorization-engine-developer.md"
+    description: "Implements rule-based transaction categorization with configurable rules"
+    
+    inputs:
+      - name: architecture_yaml
+        type: file
+        required: true
+        source: system_architect
+      - name: data_dictionary
+        type: file
+        required: true
+        source: data_architect
+      - name: project_structure
+        type: directory
+        required: true
+        source: rust_scaffolder
+    
+    outputs:
+      - name: categorization_modules
+        type: file_list
+        format: rust
+        path: "/src/categorization/"
+        repo: finance-cli
+      - name: default_rules
+        type: file
+        format: yaml
+        path: "/config/default-rules.yaml"
+        repo: finance-cli
+    
+    dependencies:
+      runs_after:
+        - rust_scaffolder
+        - data_architect
+      runs_before:
+        - test_developer
+      can_consult:
+        - staff_engineer_rust
+        - debugger
+        - consulting_cpa
+    
+    approval_gate:
+      required: false
+      approver: code_reviewer
+
+  financial_calculator_developer:
+    name: "Financial Calculator Developer"
+    status: planned
+    phase: development
+    prompt_file: "/agents/prompts/financial-calculator-developer.md"
+    description: "Builds P&L, Cash Flow, Recurring Transaction detection, and Schedule C logic"
+    
+    inputs:
+      - name: requirements_yaml
+        type: file
+        required: true
+        source: requirements_gatherer
+      - name: architecture_yaml
+        type: file
+        required: true
+        source: system_architect
+      - name: data_dictionary
+        type: file
+        required: true
+        source: data_architect
+      - name: project_structure
+        type: directory
+        required: true
+        source: rust_scaffolder
+    
+    outputs:
+      - name: financial_modules
+        type: file_list
+        format: rust
+        path: "/src/financials/"
+        repo: finance-cli
+    
+    dependencies:
+      runs_after:
+        - rust_scaffolder
+        - data_architect
+      runs_before:
+        - test_developer
+        - consulting_cpa
+      can_consult:
+        - staff_engineer_rust
+        - debugger
+        - consulting_cpa
+    
+    approval_gate:
+      required: false
+      approver: code_reviewer
+
+  duckdb_integration_developer:
+    name: "DuckDB Integration Developer"
+    status: active
+    phase: development
+    prompt_file: "/agents/prompts/duckdb-developer.md"
+    description: "Handles database operations, queries, and migrations"
+    
+    inputs:
+      - name: schema_definitions
+        type: file
+        required: true
+        source: data_architect
+      - name: data_dictionary
+        type: file
+        required: true
+        source: data_architect
+      - name: project_structure
+        type: directory
+        required: true
+        source: rust_scaffolder
+    
+    outputs:
+      - name: database_modules
+        type: file_list
+        format: rust
+        path: "/src/database/"
+        repo: finance-cli
+      - name: migrations
+        type: file_list
+        format: sql
+        path: "/migrations/"
+        repo: finance-cli
+    
+    dependencies:
+      runs_after:
+        - rust_scaffolder
+        - data_architect
+      runs_before:
+        - test_developer
+      can_consult:
+        - staff_engineer_rust
+        - debugger
+        - data_architect
+    
+    approval_gate:
+      required: false
+      approver: code_reviewer
+
+  encryption_developer:
+    name: "Encryption Developer"
+    status: planned
+    phase: development
+    prompt_file: "/agents/prompts/encryption-developer.md"
+    description: "Implements file encryption, key derivation, and secure memory handling"
+    
+    inputs:
+      - name: security_specification
+        type: file
+        required: true
+        source: security_architect
+      - name: encryption_workflow
+        type: file
+        required: true
+        source: security_architect
+      - name: project_structure
+        type: directory
+        required: true
+        source: rust_scaffolder
+    
+    outputs:
+      - name: encryption_modules
+        type: file_list
+        format: rust
+        path: "/src/encryption/"
+        repo: finance-cli
+    
+    dependencies:
+      runs_after:
+        - rust_scaffolder
+        - security_architect
+      runs_before:
+        - test_developer
+      can_consult:
+        - staff_engineer_rust
+        - debugger
+        - security_architect
+    
+    approval_gate:
+      required: false
+      approver: code_reviewer
+
+  cli_developer:
+    name: "CLI Developer"
+    status: planned
+    phase: development
+    prompt_file: "/agents/prompts/cli-developer.md"
+    description: "Builds command interface using clap, output formatting, and interactive prompts"
+    
+    inputs:
+      - name: cli_specification
+        type: file
+        required: true
+        source: cli_ux_designer
+      - name: command_reference
+        type: file
+        required: true
+        source: cli_ux_designer
+      - name: project_structure
+        type: directory
+        required: true
+        source: rust_scaffolder
+    
+    outputs:
+      - name: cli_modules
+        type: file_list
+        format: rust
+        path: "/src/cli/"
+        repo: finance-cli
+    
+    dependencies:
+      runs_after:
+        - rust_scaffolder
+        - cli_ux_designer
+      runs_before:
+        - test_developer
+      can_consult:
+        - staff_engineer_rust
+        - debugger
+        - cli_ux_designer
+    
+    approval_gate:
+      required: false
+      approver: code_reviewer
+
+  # =============================================================================
+  # PHASE 4: QUALITY
+  # =============================================================================
+
+  code_reviewer:
+    name: "Code Reviewer"
+    status: active
+    phase: quality
+    prompt_file: "/agents/prompts/code-reviewer.md"
+    description: "Reviews code after each task for quality, style, and correctness"
+    
+    inputs:
+      - name: code_files
+        type: file_list
+        required: true
+        source: any_developer
+      - name: task_context
+        type: object
+        required: true
+        source: kanban_manager
+    
+    outputs:
+      - name: review_comments
+        type: file
+        format: markdown
+        path: "/docs/reviews/task-{task_id}-review.md"
+        repo: finance-cli
+      - name: approval_status
+        type: string
+        values: ["approved", "changes_requested", "rejected"]
+    
+    dependencies:
+      runs_after: []  # Triggered per task completion
+      runs_before:
+        - staff_engineer_rust
+        - staff_engineer_python
+      can_consult:
+        - debugger
+    
+    approval_gate:
+      required: false
+      approver: null
+
+  staff_engineer_rust:
+    name: "Staff Engineer - Rust"
+    status: active
+    phase: quality
+    prompt_file: "/agents/prompts/staff-engineer-rust.md"
+    description: "Reviews all Rust code for architecture alignment, security, and idiomatic patterns"
+    
+    inputs:
+      - name: code_files
+        type: file_list
+        required: true
+        source: any_developer
+      - name: architecture_yaml
+        type: file
+        required: true
+        source: system_architect
+      - name: security_specification
+        type: file
+        required: true
+        source: security_architect
+    
+    outputs:
+      - name: technical_review
+        type: file
+        format: markdown
+        path: "/docs/reviews/sprint-{sprint_id}-rust-review.md"
+        repo: finance-cli
+      - name: improvement_requests
+        type: file
+        format: yaml
+        path: "/docs/reviews/sprint-{sprint_id}-rust-improvements.yaml"
+        repo: finance-cli
+    
+    dependencies:
+      runs_after:
+        - code_reviewer
+      runs_before:
+        - repository_librarian
+      can_consult:
+        - system_architect
+        - security_architect
+        - debugger
+    
+    approval_gate:
+      required: true
+      approver: human
+
+  staff_engineer_python:
+    name: "Staff Engineer - Python"
+    status: active
+    phase: quality
+    prompt_file: "/agents/prompts/staff-engineer-python.md"
+    description: "Reviews all Python code for architecture alignment, security, and patterns"
+    
+    inputs:
+      - name: code_files
+        type: file_list
+        required: true
+        source: any_developer
+      - name: architecture_yaml
+        type: file
+        required: true
+        source: system_architect
+    
+    outputs:
+      - name: technical_review
+        type: file
+        format: markdown
+        path: "/docs/reviews/sprint-{sprint_id}-python-review.md"
+        repo: agent-orchestrator
+      - name: improvement_requests
+        type: file
+        format: yaml
+        path: "/docs/reviews/sprint-{sprint_id}-python-improvements.yaml"
+        repo: agent-orchestrator
+    
+    dependencies:
+      runs_after:
+        - code_reviewer
+      runs_before:
+        - repository_librarian
+      can_consult:
+        - system_architect
+        - debugger
+    
+    approval_gate:
+      required: true
+      approver: human
+
+  test_developer:
+    name: "Test Developer"
+    status: planned
+    phase: quality
+    prompt_file: "/agents/prompts/test-developer.md"
+    description: "Writes unit tests, integration tests, and test fixtures"
+    
+    inputs:
+      - name: code_files
+        type: file_list
+        required: true
+        source: any_developer
+      - name: requirements_yaml
+        type: file
+        required: true
+        source: requirements_gatherer
+    
+    outputs:
+      - name: test_suites
+        type: file_list
+        format: rust
+        path: "/tests/"
+        repo: finance-cli
+      - name: test_fixtures
+        type: file_list
+        format: any
+        path: "/tests/fixtures/"
+        repo: finance-cli
+    
+    dependencies:
+      runs_after: []  # Runs after any developer completes
+      runs_before:
+        - staff_engineer_rust
+      can_consult:
+        - debugger
+        - any_developer
+    
+    approval_gate:
+      required: false
+      approver: code_reviewer
+
+  debugger:
+    name: "Debugger"
+    status: active
+    phase: quality
+    prompt_file: "/agents/prompts/debugger.md"
+    description: "Analyzes errors, traces issues, and suggests fixes. Available throughout development."
+    
+    inputs:
+      - name: error_context
+        type: object
+        required: true
+        source: any_agent
+      - name: code_files
+        type: file_list
+        required: false
+        source: filesystem
+      - name: logs
+        type: file
+        required: false
+        source: filesystem
+    
+    outputs:
+      - name: bug_analysis
+        type: file
+        format: markdown
+        path: "/docs/debugging/issue-{issue_id}.md"
+        repo: finance-cli
+      - name: fix_recommendations
+        type: object
+        format: yaml
+    
+    dependencies:
+      runs_after: []  # On-demand, available to all agents
+      runs_before: []
+      can_consult:
+        - any_developer
+        - staff_engineer_rust
+        - staff_engineer_python
+    
+    approval_gate:
+      required: false
+      approver: null
+    
+    config:
+      always_available: true  # Can be invoked by any agent at any time
+
+  # =============================================================================
+  # PHASE 5: VALIDATION
+  # =============================================================================
+
+  consulting_cpa:
+    name: "Consulting CPA"
+    status: active
+    phase: validation
+    prompt_file: "/agents/prompts/consulting-cpa.md"
+    description: "Validates P&L and Cash Flow calculations. Provides tax strategy recommendations."
+    
+    inputs:
+      - name: financial_modules
+        type: file_list
+        required: true
+        source: financial_calculator_developer
+      - name: requirements_yaml
+        type: file
+        required: true
+        source: requirements_gatherer
+      - name: sample_outputs
+        type: file_list
+        required: false
+        source: test_developer
+    
+    outputs:
+      - name: validation_report
+        type: file
+        format: markdown
+        path: "/docs/cpa-validation/validation-v{version}.md"
+        repo: finance-cli
+      - name: tax_recommendations
+        type: file
+        format: markdown
+        path: "/docs/cpa-validation/tax-recommendations.md"
+        repo: finance-cli
+    
+    dependencies:
+      runs_after:
+        - financial_calculator_developer
+        - staff_engineer_rust
+      runs_before:
+        - repository_librarian
+      can_consult:
+        - financial_calculator_developer
+        - human_proxy
+    
+    approval_gate:
+      required: true
+      approver: human
+
+  ml_engineer:
+    name: "ML Engineer"
+    status: planned
+    phase: validation
+    prompt_file: "/agents/prompts/ml-engineer.md"
+    description: "Reviews ML architecture and validates model design decisions for future implementation"
+    
+    inputs:
+      - name: ml_system_design
+        type: file
+        required: true
+        source: ml_architect
+      - name: ml_integration_points
+        type: file
+        required: true
+        source: ml_architect
+      - name: data_dictionary
+        type: file
+        required: true
+        source: data_architect
+    
+    outputs:
+      - name: ml_review
+        type: file
+        format: markdown
+        path: "/docs/architecture/ml-review.md"
+        repo: finance-cli
+      - name: implementation_guidance
+        type: file
+        format: markdown
+        path: "/docs/architecture/ml-implementation-guide.md"
+        repo: finance-cli
+    
+    dependencies:
+      runs_after:
+        - ml_architect
+      runs_before: []  # Future phase work
+      can_consult:
+        - ml_architect
+        - data_architect
+    
+    approval_gate:
+      required: true
+      approver: human
+
+  # =============================================================================
+  # PHASE 6: PROJECT MANAGEMENT
+  # =============================================================================
+
+  project_manager:
+    name: "Project Manager"
+    status: active
+    phase: project_management
+    prompt_file: "/agents/prompts/project-manager.md"
+    description: "Tracks tasks, manages sprints, identifies blockers"
+    
+    inputs:
+      - name: roadmap_yaml
+        type: file
+        required: true
+        source: product_roadmap_planner
+      - name: sprint_definitions
+        type: file_list
+        required: true
+        source: product_roadmap_planner
+      - name: kanban_state
+        type: object
+        required: true
+        source: kanban_manager
+    
+    outputs:
+      - name: sprint_plans
+        type: file
+        format: markdown
+        path: "/docs/sprints/sprint-{n}-plan.md"
+        repo: finance-cli
+      - name: status_updates
+        type: file
+        format: markdown
+        path: "/docs/sprints/sprint-{n}-status.md"
+        repo: finance-cli
+      - name: blocker_alerts
+        type: object
+        format: yaml
+    
+    dependencies:
+      runs_after:
+        - product_roadmap_planner
+      runs_before: []
+      can_consult:
+        - any_agent
+    
+    approval_gate:
+      required: false
+      approver: null
+    
+    config:
+      always_available: true
+
+  repository_librarian:
+    name: "Repository Librarian"
+    status: active
+    phase: project_management
+    prompt_file: "/agents/prompts/repository-librarian.md"
+    description: "Manages git repos, merges to main, handles rollbacks, organizes directories"
+    
+    inputs:
+      - name: approved_branches
+        type: string_list
+        required: true
+        source: staff_engineer_rust
+      - name: staff_approval_rust
+        type: boolean
+        required: true
+        source: staff_engineer_rust
+      - name: staff_approval_python
+        type: boolean
+        required: false
+        source: staff_engineer_python
+    
+    outputs:
+      - name: merge_commits
+        type: object
+        format: git
+      - name: directory_structure
+        type: object
+        format: yaml
+    
+    dependencies:
+      runs_after:
+        - staff_engineer_rust
+        - staff_engineer_python
+        - consulting_cpa
+      runs_before: []
+      can_consult:
+        - staff_engineer_rust
+        - staff_engineer_python
+    
+    approval_gate:
+      required: false
+      approver: null
+
+  documentation_writer:
+    name: "Documentation Writer"
+    status: planned
+    phase: project_management
+    prompt_file: "/agents/prompts/documentation-writer.md"
+    description: "Generates README, CLI help text, and inline documentation"
+    
+    inputs:
+      - name: code_files
+        type: file_list
+        required: true
+        source: any_developer
+      - name: cli_specification
+        type: file
+        required: true
+        source: cli_ux_designer
+      - name: architecture_yaml
+        type: file
+        required: true
+        source: system_architect
+    
+    outputs:
+      - name: readme
+        type: file
+        format: markdown
+        path: "/README.md"
+        repo: finance-cli
+      - name: cli_help
+        type: file
+        format: markdown
+        path: "/docs/cli-help.md"
+        repo: finance-cli
+      - name: api_docs
+        type: file
+        format: markdown
+        path: "/docs/api/"
+        repo: finance-cli
+    
+    dependencies:
+      runs_after:
+        - repository_librarian
+      runs_before: []
+      can_consult:
+        - cli_ux_designer
+        - any_developer
+    
+    approval_gate:
+      required: false
+      approver: human
+
+  # =============================================================================
+  # META LAYER: ORCHESTRATION
+  # =============================================================================
+
+  workflow_orchestrator:
+    name: "Workflow Orchestrator"
+    status: active
+    phase: meta
+    prompt_file: "/agents/prompts/workflow-orchestrator.md"
+    description: "Coordinates agent execution, manages DAG workflow, handles parallel runs"
+    
+    inputs:
+      - name: agents_config
+        type: file
+        required: true
+        source: filesystem
+        path: "/agents/config/agents.yaml"
+      - name: kanban_state
+        type: object
+        required: true
+        source: kanban_manager
+    
+    outputs:
+      - name: execution_logs
+        type: file
+        format: log
+        path: "/logs/execution/"
+        repo: agent-orchestrator
+      - name: workflow_state
+        type: object
+        format: yaml
+    
+    dependencies:
+      runs_after: []
+      runs_before: []
+      can_consult: []
+    
+    approval_gate:
+      required: false
+      approver: null
+    
+    config:
+      is_orchestrator: true
+
+  context_manager:
+    name: "Context Manager"
+    status: active
+    phase: meta
+    prompt_file: "/agents/prompts/context-manager.md"
+    description: "Maintains shared state across agents, manages context windows"
+    
+    inputs:
+      - name: agent_outputs
+        type: object
+        required: true
+        source: any_agent
+    
+    outputs:
+      - name: context_snapshots
+        type: file
+        format: yaml
+        path: "/context/"
+        repo: agent-orchestrator
+      - name: artifact_registry
+        type: file
+        format: yaml
+        path: "/context/artifacts.yaml"
+        repo: agent-orchestrator
+    
+    dependencies:
+      runs_after: []
+      runs_before: []
+      can_consult: []
+    
+    approval_gate:
+      required: false
+      approver: null
+
+  output_validator:
+    name: "Output Validator"
+    status: active
+    phase: meta
+    prompt_file: "/agents/prompts/output-validator.md"
+    description: "Verifies agent outputs meet expected format before passing to next agent"
+    
+    inputs:
+      - name: agent_output
+        type: object
+        required: true
+        source: any_agent
+      - name: expected_schema
+        type: object
+        required: true
+        source: agents_config
+    
+    outputs:
+      - name: validation_results
+        type: object
+        format: yaml
+      - name: error_reports
+        type: file
+        format: markdown
+        path: "/logs/validation/"
+        repo: agent-orchestrator
+    
+    dependencies:
+      runs_after: []
+      runs_before: []
+      can_consult:
+        - debugger
+    
+    approval_gate:
+      required: false
+      approver: null
+
+  prompt_skill_engineer:
+    name: "Prompt/Skill Engineer"
+    status: planned
+    phase: meta
+    prompt_file: "/agents/prompts/prompt-skill-engineer.md"
+    description: "Reviews feedback, refines prompts, updates agent skills based on performance"
+    
+    inputs:
+      - name: agent_performance_logs
+        type: file_list
+        required: true
+        source: workflow_orchestrator
+      - name: review_feedback
+        type: file_list
+        required: false
+        source: staff_engineer_rust
+      - name: current_prompts
+        type: file_list
+        required: true
+        source: filesystem
+    
+    outputs:
+      - name: updated_prompts
+        type: file_list
+        format: markdown
+        path: "/agents/prompts/"
+        repo: agent-orchestrator
+      - name: skill_improvements
+        type: file
+        format: markdown
+        path: "/agents/skills/"
+        repo: agent-orchestrator
+    
+    dependencies:
+      runs_after: []  # Runs periodically or on-demand
+      runs_before: []
+      can_consult:
+        - staff_engineer_rust
+        - staff_engineer_python
+        - project_manager
+    
+    approval_gate:
+      required: true
+      approver: human
+
+  kanban_manager:
+    name: "Kanban Manager"
+    status: active
+    phase: meta
+    prompt_file: "/agents/prompts/kanban-manager.md"
+    description: "Tracks tasks, assignments, and state transitions in SQLite"
+    
+    inputs:
+      - name: task_updates
+        type: object
+        required: true
+        source: any_agent
+    
+    outputs:
+      - name: task_database
+        type: file
+        format: sqlite
+        path: "/kanban/tasks.db"
+        repo: agent-orchestrator
+      - name: status_updates
+        type: object
+        format: yaml
+    
+    dependencies:
+      runs_after: []
+      runs_before: []
+      can_consult: []
+    
+    approval_gate:
+      required: false
+      approver: null
+    
+    config:
+      always_available: true
+      database_path: "/kanban/tasks.db"
+
+  infrastructure_agent:
+    name: "Infrastructure Agent"
+    status: planned
+    phase: meta
+    prompt_file: "/agents/prompts/infrastructure-agent.md"
+    description: "Sets up Matrix server, logging systems, and infrastructure components"
+    
+    inputs:
+      - name: infrastructure_requirements
+        type: object
+        required: true
+        source: human_proxy
+    
+    outputs:
+      - name: infrastructure_config
+        type: file_list
+        format: yaml
+        path: "/infrastructure/"
+        repo: agent-orchestrator
+      - name: setup_scripts
+        type: file_list
+        format: shell
+        path: "/infrastructure/scripts/"
+        repo: agent-orchestrator
+    
+    dependencies:
+      runs_after: []  # Runs in parallel with main workflow
+      runs_before: []
+      can_consult:
+        - human_proxy
+    
+    approval_gate:
+      required: true
+      approver: human
+    
+    config:
+      runs_parallel: true  # Does not block main workflow
+
+# =============================================================================
+# TASK STATES (Kanban)
+# =============================================================================
+
+task_states:
+  - backlog
+  - in_progress
+  - ready_for_review
+  - in_review
+  - done
+
+# =============================================================================
+# TASK SIZES (Replaces Story Points)
+# =============================================================================
+
+task_sizes:
+  small:
+    description: "Single module, minimal context, one agent"
+    typical_files: "1-3"
+    typical_agents: 1
+  medium:
+    description: "Multiple modules, moderate context, 2-3 agents"
+    typical_files: "4-10"
+    typical_agents: 2-3
+  large:
+    description: "Cross-cutting, extensive context, multiple agents and review cycles"
+    typical_files: "10+"
+    typical_agents: 4+
+
+# =============================================================================
+# PRIORITY LEVELS
+# =============================================================================
+
+priorities:
+  - must-have
+  - should-have
+  - nice-to-have
+  - future
