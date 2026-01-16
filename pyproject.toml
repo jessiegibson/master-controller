@@ -1,0 +1,16 @@
+[project]
+name = "agents-mcp"
+version = "0.1.0"
+description = "MCP Server for Agent Orchestration"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.0.0",
+    "pyyaml>=6.0",
+    "requests>=2.31.0",
+]
+
+[dependency-groups]
+dev = []
+
+
+
