@@ -1,0 +1,18 @@
+schema:
+  name: "Requirements Gatherer Output"
+  version: 1
+  description: "Validation for Requirements Gatherer outputs"
+
+  files:
+    - name: "requirements_gatherer_output.md"
+      required: true
+      format: "markdown"
+      sections:
+        - heading: "# Requirements"
+          required: false
+        - heading: "## Critical Questions"
+          required: false
+        - heading: "## Important Questions"
+          required: false
+        - heading: "## Assumptions Made"
+          required: false

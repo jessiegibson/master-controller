@@ -1,0 +1,34 @@
+schema:
+  name: "System Architect Output"
+  version: 1
+  description: "Validation for System Architect outputs"
+
+  files:
+    - name: "architecture.yaml"
+      required: true
+      format: "yaml"
+      schema:
+        type: object
+        required: ["metadata", "components"]
+        properties:
+          metadata:
+            type: object
+            required: ["version", "date"]
+          components:
+            type: array
+            min_items: 1
+          interfaces:
+            type: array
+
+    - name: "architecture.md"
+      required: true
+      format: "markdown"
+      sections:
+        - heading: "# System Architecture"
+          required: true
+        - heading: "## Overview"
+          required: true
+        - heading: "## Components"
+          required: true
+        - heading: "## Data Flow"
+          required: false

@@ -1,0 +1,12 @@
+schema:
+  name: "Parser Developer Output"
+  version: 1
+  description: "Validation for Parser Developer code outputs"
+
+  files:
+    - name: "parser_developer_output.md"
+      required: false
+      format: "markdown"
+      sections:
+        - heading: "# Parser Implementation"
+          required: false

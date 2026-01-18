@@ -1,0 +1,27 @@
+schema:
+  name: "Data Architect Output"
+  version: 1
+  description: "Validation for Data Architect outputs"
+
+  files:
+    - name: "schema.yaml"
+      required: true
+      format: "yaml"
+      schema:
+        type: object
+        required: ["tables", "relationships"]
+        properties:
+          tables:
+            type: array
+            min_items: 1
+          relationships:
+            type: array
+
+    - name: "data_dictionary.md"
+      required: true
+      format: "markdown"
+      sections:
+        - heading: "# Data Dictionary"
+          required: true
+        - heading: "## Tables"
+          required: true

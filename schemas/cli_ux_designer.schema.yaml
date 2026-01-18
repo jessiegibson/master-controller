@@ -1,0 +1,27 @@
+schema:
+  name: "CLI UX Designer Output"
+  version: 1
+  description: "Validation for CLI UX Designer outputs"
+
+  files:
+    - name: "cli-spec.md"
+      required: true
+      format: "markdown"
+      sections:
+        - heading: "# CLI Specification"
+          required: true
+        - heading: "## Commands"
+          required: true
+        - heading: "## Usage Examples"
+          required: false
+
+    - name: "cli-commands.yaml"
+      required: true
+      format: "yaml"
+      schema:
+        type: object
+        required: ["commands"]
+        properties:
+          commands:
+            type: array
+            min_items: 1

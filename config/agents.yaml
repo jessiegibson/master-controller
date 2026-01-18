@@ -2,14 +2,51 @@
 # Registry of all agents with metadata, inputs, outputs, and dependencies
 
 orchestrator:
-  name: "Finance CLI Agent Orchestrator"
+  name: "Master Controller"
   version: "0.1.0"
   llm_provider: "claude"  # claude | gemini | openai (MVP: claude only)
-  llm_model: "claude-sonnet-4-20250514"
+  llm_model: "claude-opus-4-5-20251101"
   logging: "file"  # file | matrix (MVP: file only)
   log_path: "/logs"
   kanban_db: "/kanban/tasks.db"
 
+
+feature_builder:
+  name: "Feature Builder"
+  status: active
+  phase: meta
+  prompt_file: "/agents/prompts/feature-builder.md"
+  description: "Orchestrates full feature development from requirements to tests"
+  
+  capabilities:
+    delegates_to:
+      - requirements-gatherer
+      - system-architect
+      - rust-scaffolder
+      - code-reviewer
+      - test-developer
+  
+  workflow:
+    - step: gather_requirements
+      agent: requirements-gatherer
+      wait_for_approval: true
+    
+    - step: design_architecture
+      agent: system-architect
+      context: requirements_output
+      wait_for_approval: true
+    
+    - step: scaffold_code
+      agent: rust-scaffolder
+      context: architecture_output
+    
+    - step: review
+      agent: code-reviewer
+      context: scaffolded_code
+    
+    - step: create_tests
+      agent: test-developer
+      context: [scaffolded_code, review_output]
 # Agent Definitions
 # Status: active | inactive | planned
 # Phase: product_definition | architecture | development | quality | validation | project_management | meta

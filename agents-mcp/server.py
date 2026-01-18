@@ -13,7 +13,7 @@ from typing import Optional, Dict, List
 from mcp.server.fastmcp import FastMCP
 
 # Initialize MCP server
-mcp = FastMCP("finance-agents")
+mcp = FastMCP("master-controller")
 
 # Configuration
 AGENTS_DIR = Path("agents")
