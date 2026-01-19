@@ -266,6 +266,52 @@ The agents are building a **privacy-first personal finance CLI** with:
 
 Tech stack: **Rust**, **DuckDB**, **clap**, **AES-GCM**, **Argon2**
 
+## Git Workflow
+
+**All development follows a feature branch workflow.** Each feature gets its own branch, and all commits are pushed to GitHub.
+
+### Feature Branch Process
+
+1. **Start a new feature:**
+   ```bash
+   # Checkout main and pull latest
+   git checkout main
+   git pull github main
+
+   # Create feature branch (use kebab-case naming)
+   git checkout -b feature/your-feature-name
+   ```
+
+2. **During development:**
+   - Make commits as work progresses
+   - Use descriptive commit messages (imperative mood)
+   - Include `Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>` in commits
+
+3. **Push to GitHub:**
+   ```bash
+   # Push feature branch to GitHub
+   git push -u github feature/your-feature-name
+   ```
+
+4. **After feature complete:**
+   - Create a pull request on GitHub
+   - Merge to main after review
+   - Delete the feature branch
+
+### Branch Naming Convention
+
+- `feature/` - New features (e.g., `feature/kanban-cli`, `feature/tui-dashboard`)
+- `fix/` - Bug fixes (e.g., `fix/task-state-validation`)
+- `refactor/` - Code refactoring (e.g., `refactor/database-layer`)
+- `docs/` - Documentation updates (e.g., `docs/api-reference`)
+
+### Remote Configuration
+
+- `github` - Primary remote for GitHub (git@github.com:jessiegibson/master-controller.git)
+- `origin` - Local network backup
+
+**Always push to `github` remote** when pushing to GitHub.
+
 ## How to Use This System
 
 ### Option 1: Manual Agent Execution
