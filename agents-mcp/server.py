@@ -18,7 +18,7 @@ mcp = FastMCP("master-controller")
 # Configuration
 AGENTS_DIR = Path("agents")
 PROMPTS_DIR = AGENTS_DIR / "prompts"
-CONFIG_FILE = AGENTS_DIR / "config" / "agents.yaml"
+CONFIG_FILE = Path("config") / "agents.yaml"  # Config is at root level
 ARTIFACTS_DIR = Path("context") / "artifacts"
 WORKFLOWS_DIR = Path("workflows")
 
