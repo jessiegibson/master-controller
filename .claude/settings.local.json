@@ -5,7 +5,23 @@
       "Bash(pip install:*)",
       "Bash(tree:*)",
       "Bash(ls:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(git push:*)",
+      "Bash(cargo build:*)",
+      "Bash(cargo run:*)",
+      "Bash(pip3 install:*)",
+      "Bash(cargo test:*)",
+      "Bash(uv pip install:*)",
+      "Bash(uv pip list:*)",
+      "Bash(.venv/bin/python3:*)",
+      "Bash(claude mcp add:*)",
+      "Bash(claude mcp list:*)",
+      "Bash(claude mcp list-tools:*)",
+      "Bash(claude mcp:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(wc:*)",
+      "Bash(git rm:*)"
     ]
   }
 }

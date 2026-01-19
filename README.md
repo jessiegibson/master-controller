@@ -32,10 +32,10 @@ agent-orchestrator/
 
 ```bash
 # Install dependencies
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 
 # Run orchestrator
-python -m orchestrator
+uv python -m orchestrator
 ```
 
 ## Configuration
