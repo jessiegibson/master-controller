@@ -218,9 +218,10 @@ class OutputValidator:
             try:
                 yaml.safe_load(content)
             except yaml.YAMLError as e:
+                err_msg = str(e).split('\n')[0]
                 errors.append({
                     "type": "format",
-                    "message": f"Invalid YAML syntax: {str(e).split('\\n')[0]}",
+                    "message": f"Invalid YAML syntax: {err_msg}",
                     "fix_suggestion": "Fix YAML syntax errors"
                 })
 

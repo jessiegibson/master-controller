@@ -187,7 +187,7 @@ class ContextManager:
             cursor.execute("SELECT COUNT(*) as count FROM access_control")
             if cursor.fetchone()["count"] == 0:
                 cursor.executemany("""
-                    INSERT INTO access_control (agent_id, resource_type, resource_pattern, permission, priority)
+                    INSERT OR IGNORE INTO access_control (agent_id, resource_type, resource_pattern, permission, priority)
                     VALUES (?, ?, ?, ?, ?)
                 """, [
                     ('*', 'artifact', 'self', 'read', 1),
@@ -239,7 +239,7 @@ class ContextManager:
             cursor.execute("SELECT COUNT(*) as count FROM agent_context_requirements")
             if cursor.fetchone()["count"] == 0:
                 cursor.executemany("""
-                    INSERT INTO agent_context_requirements (agent_id, required_artifact_pattern, requirement_type, priority)
+                    INSERT OR IGNORE INTO agent_context_requirements (agent_id, required_artifact_pattern, requirement_type, priority)
                     VALUES (?, ?, ?, ?)
                 """, [
                     ('requirements_gatherer', 'project_context', 'required', 1),

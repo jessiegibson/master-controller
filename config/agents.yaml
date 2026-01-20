@@ -641,7 +641,7 @@ agents:
 
   encryption_developer:
     name: "Encryption Developer"
-    status: planned
+    status: active
     phase: development
     prompt_file: "/agents/prompts/encryption-developer.md"
     description: "Implements file encryption, key derivation, and secure memory handling"
