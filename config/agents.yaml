@@ -1383,6 +1383,55 @@ agents:
       always_available: true
       database_path: "/kanban/tasks.db"
 
+  status_summarizer:
+    name: "Status Summarizer"
+    status: active
+    phase: meta
+    prompt_file: "/agents/prompts/status-summarizer.md"
+    description: "Aggregates and reports current state of all agents, workflows, and tasks"
+
+    inputs:
+      - name: workflow_state
+        type: file
+        required: true
+        source: filesystem
+        path: "/workflow/current_state.json"
+      - name: execution_logs
+        type: file
+        required: false
+        source: filesystem
+        path: "/workflow/executions.json"
+      - name: kanban_state
+        type: object
+        required: false
+        source: kanban_manager
+
+    outputs:
+      - name: status_report
+        type: file
+        format: markdown
+        path: "/workflow/status_report.md"
+        repo: agent-orchestrator
+      - name: status_json
+        type: file
+        format: json
+        path: "/workflow/status_summary.json"
+        repo: agent-orchestrator
+
+    dependencies:
+      runs_after: []  # Can run anytime
+      runs_before: []
+      can_consult:
+        - any_agent
+
+    approval_gate:
+      required: false
+      approver: null
+
+    config:
+      always_available: true
+      output_formats: ["markdown", "json"]
+
   infrastructure_agent:
     name: "Infrastructure Agent"
     status: planned
