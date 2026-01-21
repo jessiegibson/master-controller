@@ -545,7 +545,7 @@ agents:
 
   financial_calculator_developer:
     name: "Financial Calculator Developer"
-    status: planned
+    status: active
     phase: development
     prompt_file: "/agents/prompts/financial-calculator-developer.md"
     description: "Builds P&L, Cash Flow, Recurring Transaction detection, and Schedule C logic"
@@ -684,7 +684,7 @@ agents:
 
   cli_developer:
     name: "CLI Developer"
-    status: planned
+    status: active
     phase: development
     prompt_file: "/agents/prompts/cli-developer.md"
     description: "Builds command interface using clap, output formatting, and interactive prompts"
@@ -859,7 +859,7 @@ agents:
 
   test_developer:
     name: "Test Developer"
-    status: planned
+    status: active
     phase: quality
     prompt_file: "/agents/prompts/test-developer.md"
     description: "Writes unit tests, integration tests, and test fixtures"

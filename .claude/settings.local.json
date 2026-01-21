@@ -21,7 +21,11 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(wc:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(sqlite3:*)",
+      "mcp__agents-mcp__run_agent",
+      "mcp__agents-mcp__list_agents",
+      "Bash(git -C /Users/jag/workspace/github.com/jessiegibson/agents log --oneline)"
     ]
   }
 }

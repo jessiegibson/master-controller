@@ -1,0 +1,271 @@
+# Quick Review Workflow
+# Lightweight workflow for code review only
+# Use for reviewing existing code or PR reviews
+
+name: quick-review
+description: |
+  Lightweight workflow focused exclusively on code review. Use this for:
+  - Reviewing pull requests
+  - Post-implementation code quality checks
+  - Security audits of specific modules
+  - Architecture compliance verification
+
+version: "1.0.0"
+target_project: finance-cli
+
+# Prerequisites - minimal requirements for review
+prerequisites:
+  required:
+    - name: code_files
+      description: Files to review (can be specified at runtime)
+      type: file_list
+
+  optional:
+    - name: architecture_yaml
+      source: system-architect
+      description: For architecture compliance checking
+
+    - name: security_specification
+      source: security-architect
+      description: For security compliance checking
+
+    - name: requirements_yaml
+      source: requirements-gatherer
+      description: For requirements traceability
+
+# Input parameters (provided at workflow invocation)
+parameters:
+  - name: target_files
+    type: file_list
+    required: true
+    description: List of files or directories to review
+
+  - name: review_type
+    type: enum
+    values:
+      - full          # Complete review (security, performance, style, architecture)
+      - security      # Security-focused review only
+      - performance   # Performance-focused review only
+      - style         # Style and best practices only
+      - architecture  # Architecture compliance only
+    default: full
+    description: Type of review to perform
+
+  - name: severity_threshold
+    type: enum
+    values:
+      - critical  # Only report critical issues
+      - high      # Report high and critical
+      - medium    # Report medium, high, and critical
+      - low       # Report all issues including minor suggestions
+    default: medium
+    description: Minimum severity level to report
+
+# Global configuration
+config:
+  max_retries: 2
+  retry_delay_seconds: 10
+  timeout_minutes: 30
+  log_level: info
+  artifact_storage: /context/artifacts/
+
+# Error handling - lightweight for quick workflow
+error_handling:
+  on_agent_failure:
+    action: retry
+    max_retries: 2
+    escalate_after_retries: false  # Don't escalate for review workflow
+  on_validation_failure:
+    action: continue  # Continue with partial results
+    notify_human: true
+  on_timeout:
+    action: return_partial
+    message: "Review timed out. Partial results available."
+
+# Phase definitions - single phase for simplicity
+phases:
+
+  # =============================================================================
+  # PHASE 1: CODE REVIEW
+  # =============================================================================
+  - name: review
+    description: |
+      Perform code review based on specified review type and parameters.
+      Multiple review agents can run in parallel for comprehensive coverage.
+    parallel: true
+
+    agents:
+      - name: code-reviewer
+        description: Primary code review for quality, style, and correctness
+        enabled: true  # Always enabled
+        inputs:
+          - code_files: parameter:target_files
+          - architecture_yaml: artifact:system-architect  # Optional
+        outputs:
+          - review_comments
+          - approval_status
+          - issue_summary
+        timeout_minutes: 20
+        config:
+          review_type: parameter:review_type
+          severity_threshold: parameter:severity_threshold
+          output_format: markdown
+          include_line_numbers: true
+          suggest_fixes: true
+
+      - name: staff-engineer-rust
+        description: Deep technical review for Rust-specific patterns
+        enabled_when:
+          - review_type: [full, architecture, performance]
+          - file_extension: [.rs]
+        inputs:
+          - code_files: parameter:target_files
+          - architecture_yaml: artifact:system-architect
+          - security_specification: artifact:security-architect
+        outputs:
+          - technical_review
+          - improvement_requests
+        timeout_minutes: 25
+        config:
+          focus_areas:
+            - idiomatic_rust
+            - error_handling
+            - memory_safety
+            - performance_patterns
+            - security_patterns
+
+      - name: security-architect
+        description: Security-focused review
+        enabled_when:
+          - review_type: [full, security]
+        inputs:
+          - code_files: parameter:target_files
+          - security_specification: artifact:security-architect
+        outputs:
+          - security_findings
+          - vulnerability_report
+        timeout_minutes: 20
+        config:
+          check_patterns:
+            - input_validation
+            - output_encoding
+            - authentication
+            - authorization
+            - cryptography
+            - sensitive_data_handling
+            - error_disclosure
+
+    approval_gate:
+      required: false  # Quick review doesn't require approval gate
+      auto_complete: true
+
+# Output configuration
+output:
+  format: markdown
+  path: /docs/reviews/quick-review-{timestamp}.md
+
+  sections:
+    - name: summary
+      description: Executive summary of findings
+
+    - name: critical_issues
+      description: Issues that must be fixed
+      include_when: severity >= critical
+
+    - name: high_priority
+      description: High priority issues
+      include_when: severity >= high
+
+    - name: recommendations
+      description: Suggestions for improvement
+      include_when: severity >= low
+
+    - name: approval_status
+      description: Overall review status
+      values:
+        - approved         # No critical issues, minor issues acceptable
+        - changes_requested # Issues must be addressed before merge
+        - rejected         # Fundamental problems requiring redesign
+
+  summary_template: |
+    # Code Review Summary
+
+    **Review Date:** {timestamp}
+    **Review Type:** {review_type}
+    **Files Reviewed:** {file_count}
+
+    ## Overall Status: {approval_status}
+
+    | Severity | Count |
+    |----------|-------|
+    | Critical | {critical_count} |
+    | High     | {high_count} |
+    | Medium   | {medium_count} |
+    | Low      | {low_count} |
+
+    ## Key Findings
+    {key_findings}
+
+    ## Detailed Review
+    {detailed_findings}
+
+# Post-workflow actions
+post_workflow:
+  on_success:
+    - action: save_review
+      path: /docs/reviews/
+    - action: update_context
+      artifact_type: review
+
+  on_failure:
+    - action: save_partial
+      path: /docs/reviews/partial/
+
+# Support agents (minimal for quick workflow)
+support_agents:
+  - name: debugger
+    description: Analyze errors in reviewed code
+    available: on_demand
+
+  - name: output-validator
+    description: Validate review output format
+    available: always
+
+# Workflow metadata
+metadata:
+  created: 2025-01-20
+  author: orchestrator
+  estimated_duration_minutes: 15-30
+  complexity: low
+  tags:
+    - review
+    - quality
+    - quick
+    - lightweight
+  use_cases:
+    - Pull request reviews
+    - Pre-merge checks
+    - Security audits
+    - Code quality assessments
+    - Architecture compliance checks
+  invocation_examples:
+    - description: "Full review of parser module"
+      command: |
+        workflow run quick-review \
+          --target-files /src/parsers/ \
+          --review-type full \
+          --severity-threshold medium
+
+    - description: "Security review of encryption module"
+      command: |
+        workflow run quick-review \
+          --target-files /src/encryption/ \
+          --review-type security \
+          --severity-threshold low
+
+    - description: "Quick style check on CLI changes"
+      command: |
+        workflow run quick-review \
+          --target-files /src/cli/ \
+          --review-type style \
+          --severity-threshold high

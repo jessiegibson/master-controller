@@ -1,0 +1,352 @@
+# Implementation Phase Workflow
+# Development and quality phases only - for when design is already complete
+# Use this when architecture and design artifacts already exist
+
+name: implementation-phase
+description: |
+  Focused implementation workflow that covers only the development and quality
+  phases. Use this workflow when architecture and design phases are already
+  complete and approved artifacts exist in the context store.
+
+version: "1.0.0"
+target_project: finance-cli
+
+# Prerequisites - artifacts that must exist before running this workflow
+prerequisites:
+  required_artifacts:
+    - name: architecture_yaml
+      source: system-architect
+      path: /docs/architecture/architecture.yaml
+
+    - name: cli_specification
+      source: cli-ux-designer
+      path: /docs/design/cli-specification.md
+
+    - name: schema_definitions
+      source: data-architect
+      path: /docs/architecture/schema.sql
+
+    - name: data_dictionary
+      source: data-architect
+      path: /docs/architecture/data-dictionary.md
+
+    - name: security_specification
+      source: security-architect
+      path: /docs/architecture/security-spec.md
+
+    - name: encryption_workflow
+      source: security-architect
+      path: /docs/architecture/encryption-workflow.yaml
+
+    - name: command_reference
+      source: cli-ux-designer
+      path: /docs/design/commands.yaml
+
+    - name: requirements_yaml
+      source: requirements-gatherer
+      path: /docs/requirements/requirements-v{version}.yaml
+
+  optional_artifacts:
+    - name: ml_system_design
+      source: ml-architect
+      path: /docs/architecture/ml-system-design.md
+
+    - name: ml_integration_points
+      source: ml-architect
+      path: /docs/architecture/ml-integration.yaml
+
+# Global configuration
+config:
+  max_retries: 3
+  retry_delay_seconds: 30
+  timeout_minutes: 45
+  log_level: info
+  artifact_storage: /context/artifacts/
+  kanban_db: /kanban/tasks.db
+
+# Error handling configuration
+error_handling:
+  on_agent_failure:
+    action: retry
+    max_retries: 3
+    escalate_after_retries: true
+  on_validation_failure:
+    action: escalate_to_debugger
+    notify_human: true
+  on_timeout:
+    action: abort
+    save_partial_state: true
+  on_missing_prerequisite:
+    action: abort
+    message: "Required artifact missing. Run full-build workflow or create artifact manually."
+
+# Phase definitions
+phases:
+
+  # =============================================================================
+  # PHASE 1: SCAFFOLDING (if not already done)
+  # =============================================================================
+  - name: scaffolding
+    description: |
+      Generate project structure if not already present. This phase is skipped
+      if project structure already exists.
+    parallel: false
+    skip_if_exists:
+      - /Cargo.toml
+      - /src/lib.rs
+
+    agents:
+      - name: rust-scaffolder
+        description: Generate Cargo.toml and module boilerplate
+        inputs:
+          - architecture_yaml: artifact:system-architect
+          - cli_specification: artifact:cli-ux-designer
+        outputs:
+          - cargo_toml
+          - project_structure
+        timeout_minutes: 20
+        can_consult:
+          - staff-engineer-rust
+
+    approval_gate:
+      required: false
+      approver: code-reviewer
+      description: Automated review of scaffolded structure
+
+  # =============================================================================
+  # PHASE 2: DEVELOPMENT
+  # =============================================================================
+  - name: development
+    description: |
+      Implement all core modules in parallel. Each developer agent works on
+      their specific domain independently.
+    parallel: true
+    depends_on:
+      - scaffolding
+
+    agents:
+      - name: duckdb-developer
+        description: Implement database operations, queries, and migrations
+        inputs:
+          - schema_definitions: artifact:data-architect
+          - data_dictionary: artifact:data-architect
+          - project_structure: from:rust-scaffolder
+        outputs:
+          - database_modules
+          - migrations
+        timeout_minutes: 45
+        can_consult:
+          - staff-engineer-rust
+          - debugger
+        retry_config:
+          max_retries: 3
+          on_failure: escalate_to_debugger
+
+      - name: parser-developer
+        description: Build CSV, QFX, PDF parsers with institution detection
+        inputs:
+          - architecture_yaml: artifact:system-architect
+          - data_dictionary: artifact:data-architect
+          - project_structure: from:rust-scaffolder
+        outputs:
+          - parser_modules
+        timeout_minutes: 45
+        can_consult:
+          - staff-engineer-rust
+          - debugger
+
+      - name: encryption-developer
+        description: Implement file encryption and key derivation
+        inputs:
+          - security_specification: artifact:security-architect
+          - encryption_workflow: artifact:security-architect
+          - project_structure: from:rust-scaffolder
+        outputs:
+          - encryption_modules
+        timeout_minutes: 45
+        can_consult:
+          - staff-engineer-rust
+          - security-architect
+          - debugger
+
+      - name: categorization-engine-developer
+        description: Implement rule-based transaction categorization
+        inputs:
+          - architecture_yaml: artifact:system-architect
+          - data_dictionary: artifact:data-architect
+          - project_structure: from:rust-scaffolder
+        outputs:
+          - categorization_modules
+          - default_rules
+        timeout_minutes: 45
+        can_consult:
+          - staff-engineer-rust
+          - consulting-cpa
+          - debugger
+
+      - name: financial-calculator-developer
+        description: Build P&L, Cash Flow, and Schedule C calculations
+        inputs:
+          - requirements_yaml: artifact:requirements-gatherer
+          - architecture_yaml: artifact:system-architect
+          - data_dictionary: artifact:data-architect
+          - project_structure: from:rust-scaffolder
+        outputs:
+          - financial_modules
+        timeout_minutes: 60
+        can_consult:
+          - staff-engineer-rust
+          - consulting-cpa
+          - debugger
+
+      - name: ml-engineer
+        description: Implement ML model stubs and integration points
+        skip_if_missing_input: true  # Skip if ml artifacts don't exist
+        inputs:
+          - ml_system_design: artifact:ml-architect
+          - ml_integration_points: artifact:ml-architect
+          - project_structure: from:rust-scaffolder
+        outputs:
+          - ml_modules
+        timeout_minutes: 45
+        can_consult:
+          - ml-architect
+          - staff-engineer-rust
+          - debugger
+
+      - name: cli-developer
+        description: Build command interface using clap
+        inputs:
+          - cli_specification: artifact:cli-ux-designer
+          - command_reference: artifact:cli-ux-designer
+          - project_structure: from:rust-scaffolder
+        outputs:
+          - cli_modules
+        timeout_minutes: 45
+        can_consult:
+          - staff-engineer-rust
+          - cli-ux-designer
+          - debugger
+
+    approval_gate:
+      required: false
+      approver: code-reviewer
+      description: Each module undergoes automated code review
+
+  # =============================================================================
+  # PHASE 3: QUALITY
+  # =============================================================================
+  - name: quality
+    description: |
+      Run tests and perform code review on all implemented modules.
+    parallel: true
+    depends_on:
+      - development
+
+    agents:
+      - name: test-developer
+        description: Write unit tests, integration tests, and test fixtures
+        inputs:
+          - code_files: from:development
+          - requirements_yaml: artifact:requirements-gatherer
+        outputs:
+          - test_suites
+          - test_fixtures
+        timeout_minutes: 60
+        can_consult:
+          - debugger
+        test_config:
+          coverage_threshold: 80
+          require_integration_tests: true
+          require_edge_case_tests: true
+
+      - name: code-reviewer
+        description: Review all code for quality, style, and correctness
+        inputs:
+          - code_files: from:development
+          - architecture_yaml: artifact:system-architect
+        outputs:
+          - review_comments
+          - approval_status
+        timeout_minutes: 45
+        can_consult:
+          - debugger
+          - staff-engineer-rust
+        review_config:
+          check_security: true
+          check_performance: true
+          check_error_handling: true
+          check_documentation: true
+
+    approval_gate:
+      required: true
+      approver: human
+      description: Human review of test coverage and code quality
+      criteria:
+        - Test coverage meets threshold (>80%)
+        - All tests pass
+        - Code review issues are resolved
+        - No security vulnerabilities
+
+# Post-workflow actions
+post_workflow:
+  on_success:
+    - action: notify
+      message: "Implementation phase complete. Ready for documentation."
+    - action: update_kanban
+      status: ready_for_documentation
+    - action: create_summary
+      path: /docs/implementation-summary.md
+
+  on_failure:
+    - action: notify
+      message: "Implementation phase failed. Review logs for details."
+    - action: save_state
+      path: /workflow/implementation-state.yaml
+    - action: create_issue
+      assignee: debugger
+
+# Support agents available throughout workflow
+support_agents:
+  - name: debugger
+    description: Analyze errors and suggest fixes
+    available: always
+
+  - name: staff-engineer-rust
+    description: Review Rust code for architecture alignment
+    available: on_demand
+
+  - name: consulting-cpa
+    description: Validate financial calculations
+    available: on_demand
+
+  - name: kanban-manager
+    description: Track task state transitions
+    available: always
+
+  - name: context-manager
+    description: Maintain shared state across agents
+    available: always
+
+  - name: output-validator
+    description: Verify agent outputs meet expected format
+    available: always
+
+# Workflow metadata
+metadata:
+  created: 2025-01-20
+  author: orchestrator
+  estimated_duration_hours: 4-8
+  complexity: medium
+  tags:
+    - implementation
+    - development
+    - quality
+  use_when:
+    - Architecture phase is complete
+    - Design documents are approved
+    - Ready to start coding
+  not_recommended_when:
+    - Requirements are not finalized
+    - Architecture needs changes
+    - Starting a new project from scratch

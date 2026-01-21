@@ -1,0 +1,506 @@
+# Full Build Workflow
+# Complete project build from requirements to release
+# Executes all 7 phases with proper dependencies and approval gates
+
+name: full-build
+description: |
+  Complete end-to-end project build workflow from initial requirements gathering
+  through to final documentation. This workflow executes all phases of the
+  multi-agent orchestration system to build a privacy-first personal finance CLI.
+
+version: "1.0.0"
+target_project: finance-cli
+
+# Global configuration
+config:
+  max_retries: 3
+  retry_delay_seconds: 30
+  timeout_minutes: 60
+  log_level: info
+  artifact_storage: /context/artifacts/
+  kanban_db: /kanban/tasks.db
+
+# Error handling configuration
+error_handling:
+  on_agent_failure:
+    action: retry  # retry | skip | abort | escalate_to_debugger
+    max_retries: 3
+    escalate_after_retries: true
+  on_validation_failure:
+    action: escalate_to_debugger
+    notify_human: true
+  on_timeout:
+    action: abort
+    save_partial_state: true
+
+# Phase definitions
+phases:
+
+  # =============================================================================
+  # PHASE 1: PLANNING
+  # =============================================================================
+  - name: planning
+    description: |
+      Gather requirements and create product roadmap. This phase is sequential
+      because the roadmap depends on finalized requirements.
+    parallel: false
+
+    agents:
+      - name: requirements-gatherer
+        description: Transform project inputs into structured, actionable requirements
+        inputs:
+          - project_name: string
+          - project_description: string
+          - user_freeform_input: string
+          - existing_docs: file_list  # optional
+        outputs:
+          - requirements_markdown
+          - requirements_yaml
+        timeout_minutes: 30
+
+      - name: product-roadmap-planner
+        description: Create phased roadmap with MVP scope and sprint definitions
+        inputs:
+          - requirements_yaml: from:requirements-gatherer
+          - requirements_markdown: from:requirements-gatherer
+        outputs:
+          - roadmap_markdown
+          - roadmap_yaml
+          - sprint_definitions
+        timeout_minutes: 30
+
+    approval_gate:
+      required: true
+      approver: human
+      description: |
+        Review and approve requirements and roadmap before proceeding to
+        architecture phase. This is a critical checkpoint.
+      criteria:
+        - Requirements are complete and unambiguous
+        - MVP scope is well-defined
+        - Sprint definitions are realistic
+        - Dependencies are clearly identified
+
+  # =============================================================================
+  # PHASE 2: ARCHITECTURE
+  # =============================================================================
+  - name: architecture
+    description: |
+      Design system architecture, data models, security model, and ML integration
+      points. These agents run in parallel as they work on independent domains.
+    parallel: true
+    depends_on:
+      - planning
+
+    agents:
+      - name: system-architect
+        description: Produce high-level component design and data flow
+        inputs:
+          - requirements_yaml: from:requirements-gatherer
+          - roadmap_yaml: from:product-roadmap-planner
+        outputs:
+          - architecture_decision_records
+          - component_diagram
+          - architecture_yaml
+        timeout_minutes: 45
+        can_consult:
+          - staff-engineer-rust
+
+      - name: data-architect
+        description: Design DuckDB schema and data normalization rules
+        inputs:
+          - requirements_yaml: from:requirements-gatherer
+          - architecture_yaml: from:system-architect
+        outputs:
+          - schema_definitions
+          - data_dictionary
+          - config_schemas
+        timeout_minutes: 30
+        # Note: Waits for system-architect within parallel phase
+        wait_for:
+          - system-architect
+
+      - name: security-architect
+        description: Define encryption flow, key management, and threat model
+        inputs:
+          - requirements_yaml: from:requirements-gatherer
+          - architecture_yaml: from:system-architect
+        outputs:
+          - security_specification
+          - threat_model
+          - encryption_workflow
+        timeout_minutes: 30
+        wait_for:
+          - system-architect
+
+      - name: ml-architect
+        description: Design ML integration architecture for future implementation
+        inputs:
+          - requirements_yaml: from:requirements-gatherer
+          - architecture_yaml: from:system-architect
+          - data_dictionary: from:data-architect
+        outputs:
+          - ml_system_design
+          - ml_integration_points
+        timeout_minutes: 30
+        wait_for:
+          - system-architect
+          - data-architect
+
+    approval_gate:
+      required: true
+      approver: human
+      description: |
+        Review all architecture documents before proceeding to design and
+        scaffolding. Ensure coherence across system, data, security, and ML designs.
+      criteria:
+        - ADRs are well-reasoned
+        - Component boundaries are clear
+        - Security model is comprehensive
+        - Data schema supports all requirements
+        - ML integration points are identified
+
+  # =============================================================================
+  # PHASE 3: DESIGN
+  # =============================================================================
+  - name: design
+    description: |
+      Design CLI user experience and validate financial calculations approach.
+      These agents run in parallel as they focus on different aspects.
+    parallel: true
+    depends_on:
+      - architecture
+
+    agents:
+      - name: cli-ux-designer
+        description: Design command structure, flags, output formats, and user flows
+        inputs:
+          - requirements_yaml: from:requirements-gatherer
+          - roadmap_yaml: from:product-roadmap-planner
+          - architecture_yaml: from:system-architect
+        outputs:
+          - cli_specification
+          - command_reference
+        timeout_minutes: 30
+
+      - name: consulting-cpa
+        description: Validate tax categories and Schedule C mapping approach
+        inputs:
+          - requirements_yaml: from:requirements-gatherer
+          - architecture_yaml: from:system-architect
+        outputs:
+          - validation_report
+          - tax_recommendations
+        timeout_minutes: 30
+
+    approval_gate:
+      required: true
+      approver: human
+      description: |
+        Review CLI design and CPA validation before implementation begins.
+      criteria:
+        - CLI commands are intuitive and complete
+        - Tax categories are IRS-compliant
+        - Schedule C mapping is accurate
+
+  # =============================================================================
+  # PHASE 4: SCAFFOLDING
+  # =============================================================================
+  - name: scaffolding
+    description: |
+      Generate project structure, set up git repository, and configure CI/CD.
+      Sequential execution to ensure proper initialization order.
+    parallel: false
+    depends_on:
+      - architecture
+
+    agents:
+      - name: rust-scaffolder
+        description: Generate Cargo.toml and module boilerplate
+        inputs:
+          - architecture_yaml: from:system-architect
+          - cli_specification: from:cli-ux-designer
+        outputs:
+          - cargo_toml
+          - project_structure
+        timeout_minutes: 20
+        can_consult:
+          - staff-engineer-rust
+
+      - name: repository-librarian
+        description: Set up git structure and directory organization
+        inputs:
+          - project_structure: from:rust-scaffolder
+        outputs:
+          - directory_structure
+        timeout_minutes: 15
+
+      - name: infrastructure-agent
+        description: Configure CI/CD and build infrastructure
+        inputs:
+          - project_structure: from:rust-scaffolder
+        outputs:
+          - infrastructure_config
+          - setup_scripts
+        timeout_minutes: 20
+
+    approval_gate:
+      required: false
+      approver: code-reviewer
+      description: |
+        Automated review of scaffolded project structure.
+      criteria:
+        - Project compiles successfully
+        - Directory structure matches architecture
+        - CI/CD pipeline is functional
+
+  # =============================================================================
+  # PHASE 5: DEVELOPMENT
+  # =============================================================================
+  - name: development
+    description: |
+      Implement all core modules in parallel. Each developer agent works on
+      their specific domain independently.
+    parallel: true
+    depends_on:
+      - scaffolding
+      - design
+
+    agents:
+      - name: duckdb-developer
+        description: Implement database operations, queries, and migrations
+        inputs:
+          - schema_definitions: from:data-architect
+          - data_dictionary: from:data-architect
+          - project_structure: from:rust-scaffolder
+        outputs:
+          - database_modules
+          - migrations
+        timeout_minutes: 45
+        can_consult:
+          - staff-engineer-rust
+          - debugger
+
+      - name: parser-developer
+        description: Build CSV, QFX, PDF parsers with institution detection
+        inputs:
+          - architecture_yaml: from:system-architect
+          - data_dictionary: from:data-architect
+          - project_structure: from:rust-scaffolder
+        outputs:
+          - parser_modules
+        timeout_minutes: 45
+        can_consult:
+          - staff-engineer-rust
+          - debugger
+
+      - name: encryption-developer
+        description: Implement file encryption and key derivation
+        inputs:
+          - security_specification: from:security-architect
+          - encryption_workflow: from:security-architect
+          - project_structure: from:rust-scaffolder
+        outputs:
+          - encryption_modules
+        timeout_minutes: 45
+        can_consult:
+          - staff-engineer-rust
+          - security-architect
+          - debugger
+
+      - name: categorization-engine-developer
+        description: Implement rule-based transaction categorization
+        inputs:
+          - architecture_yaml: from:system-architect
+          - data_dictionary: from:data-architect
+          - project_structure: from:rust-scaffolder
+        outputs:
+          - categorization_modules
+          - default_rules
+        timeout_minutes: 45
+        can_consult:
+          - staff-engineer-rust
+          - consulting-cpa
+          - debugger
+
+      - name: financial-calculator-developer
+        description: Build P&L, Cash Flow, and Schedule C calculations
+        inputs:
+          - requirements_yaml: from:requirements-gatherer
+          - architecture_yaml: from:system-architect
+          - data_dictionary: from:data-architect
+          - project_structure: from:rust-scaffolder
+        outputs:
+          - financial_modules
+        timeout_minutes: 60
+        can_consult:
+          - staff-engineer-rust
+          - consulting-cpa
+          - debugger
+
+      - name: ml-engineer
+        description: Implement ML model stubs and integration points
+        inputs:
+          - ml_system_design: from:ml-architect
+          - ml_integration_points: from:ml-architect
+          - project_structure: from:rust-scaffolder
+        outputs:
+          - ml_modules
+        timeout_minutes: 45
+        can_consult:
+          - ml-architect
+          - staff-engineer-rust
+          - debugger
+
+      - name: cli-developer
+        description: Build command interface using clap
+        inputs:
+          - cli_specification: from:cli-ux-designer
+          - command_reference: from:cli-ux-designer
+          - project_structure: from:rust-scaffolder
+        outputs:
+          - cli_modules
+        timeout_minutes: 45
+        can_consult:
+          - staff-engineer-rust
+          - cli-ux-designer
+          - debugger
+
+    approval_gate:
+      required: false
+      approver: code-reviewer
+      description: |
+        Each module undergoes code review before proceeding to quality phase.
+      criteria:
+        - Code compiles without errors
+        - Follows Rust best practices
+        - Matches architecture specifications
+        - Has appropriate error handling
+
+  # =============================================================================
+  # PHASE 6: QUALITY
+  # =============================================================================
+  - name: quality
+    description: |
+      Run tests and perform code review on all implemented modules.
+      Test developer and code reviewer work in parallel.
+    parallel: true
+    depends_on:
+      - development
+
+    agents:
+      - name: test-developer
+        description: Write unit tests, integration tests, and test fixtures
+        inputs:
+          - code_files: from:development  # All development outputs
+          - requirements_yaml: from:requirements-gatherer
+        outputs:
+          - test_suites
+          - test_fixtures
+        timeout_minutes: 60
+        can_consult:
+          - debugger
+
+      - name: code-reviewer
+        description: Review all code for quality, style, and correctness
+        inputs:
+          - code_files: from:development
+          - architecture_yaml: from:system-architect
+        outputs:
+          - review_comments
+          - approval_status
+        timeout_minutes: 45
+        can_consult:
+          - debugger
+          - staff-engineer-rust
+
+    approval_gate:
+      required: true
+      approver: human
+      description: |
+        Human review of test coverage and code quality before documentation.
+      criteria:
+        - Test coverage meets threshold (>80%)
+        - All tests pass
+        - Code review issues are resolved
+        - Security requirements are verified
+
+  # =============================================================================
+  # PHASE 7: DOCUMENTATION
+  # =============================================================================
+  - name: documentation
+    description: |
+      Generate all project documentation including README, CLI help, and API docs.
+    parallel: false
+    depends_on:
+      - development
+      - quality
+
+    agents:
+      - name: documentation-writer
+        description: Generate README, CLI help text, and API documentation
+        inputs:
+          - code_files: from:development
+          - cli_specification: from:cli-ux-designer
+          - architecture_yaml: from:system-architect
+          - test_suites: from:test-developer
+        outputs:
+          - readme
+          - cli_help
+          - api_docs
+        timeout_minutes: 30
+
+    approval_gate:
+      required: false
+      approver: human
+      description: |
+        Final review of all documentation before release.
+      criteria:
+        - README is complete and accurate
+        - CLI help matches implementation
+        - API documentation is comprehensive
+
+# Support agents available throughout workflow
+support_agents:
+  - name: debugger
+    description: Analyze errors and suggest fixes
+    available: always
+
+  - name: staff-engineer-rust
+    description: Review Rust code for architecture alignment and patterns
+    available: on_demand
+
+  - name: staff-engineer-python
+    description: Review Python code for architecture alignment and patterns
+    available: on_demand
+
+  - name: project-manager
+    description: Track tasks, manage sprints, identify blockers
+    available: always
+
+  - name: kanban-manager
+    description: Track task state transitions
+    available: always
+
+  - name: context-manager
+    description: Maintain shared state across agents
+    available: always
+
+  - name: output-validator
+    description: Verify agent outputs meet expected format
+    available: always
+
+  - name: workflow-orchestrator
+    description: Coordinate agent execution and manage DAG workflow
+    available: always
+
+# Workflow metadata
+metadata:
+  created: 2025-01-20
+  author: orchestrator
+  estimated_duration_hours: 8-16
+  complexity: high
+  tags:
+    - full-build
+    - end-to-end
+    - production
