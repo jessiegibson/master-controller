@@ -20,7 +20,6 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from orchestrator import WorkflowEngine
 
-
 def main():
     parser = argparse.ArgumentParser(description="Run a single agent")
     parser.add_argument("agent_name", help="Name of the agent to run")

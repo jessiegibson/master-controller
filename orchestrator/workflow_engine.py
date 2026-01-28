@@ -97,7 +97,7 @@ class WorkflowEngine:
                 try:
                     context = self.context_manager.assemble_context(
                         agent_id=agent_id,
-                        max_tokens=100000
+                        max_tokens=50000
                     )
                 except Exception as ctx_error:
                     # If context assembly fails, log but continue with empty context

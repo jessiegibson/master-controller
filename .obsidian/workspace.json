@@ -1,0 +1,223 @@
+{
+  "main": {
+    "id": "0e44841543528074",
+    "type": "split",
+    "children": [
+      {
+        "id": "52d8edef62b22488",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "128aa409544262cf",
+            "type": "leaf",
+            "state": {
+              "type": "bases",
+              "state": {
+                "file": "Untitled.base",
+                "viewName": "Table"
+              },
+              "icon": "lucide-table",
+              "title": "Untitled"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "bf2277e8b80d0d81",
+    "type": "split",
+    "children": [
+      {
+        "id": "f155b5364d998c9b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "13680059c53350f9",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "fd4c45ba8a137863",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "1733c0c94426abf6",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "1396c796006014fe",
+    "type": "split",
+    "children": [
+      {
+        "id": "405934e550d29f51",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "01b54169e76f8b21",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "workflow/artifacts/data_architect/data_architect_output.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for data_architect_output"
+            }
+          },
+          {
+            "id": "303d8f2927b98c3a",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "workflow/artifacts/data_architect/data_architect_output.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from data_architect_output"
+            }
+          },
+          {
+            "id": "e73686ab649d5a3e",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "46cc3e8864d9739f",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "fb278eb7ce2f7aaa",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "workflow/artifacts/data_architect/data_architect_output.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of data_architect_output"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "128aa409544262cf",
+  "lastOpenFiles": [
+    "2026-01-27.md",
+    "Untitled.base",
+    "workflow/status_report.md",
+    "workflow/artifacts/test_developer/test_developer_output.md",
+    "prompts/cli_developer.md",
+    "prompts/categorization_engine_developer.md",
+    "docs/zed-mcp-setup.md",
+    "prompts/documentation_writer.md",
+    "workflow/artifacts/categorization_engine_developer/categorization_engine_developer_output.md",
+    "context/requirements_answers.md",
+    "workflow/artifacts/data_architect/data_architect_output.md",
+    "kanban-cli/target/debug/incremental/kanban-1f1z059r1i7dp/s-hf3oo2u3fn-0yc9piy-0q6xjkq8k7wy3jwb8i1c96omv/work-products.bin",
+    "kanban-cli/target/debug/incremental/kanban-1f1z059r1i7dp/s-hf3oo2u3fn-0yc9piy-0q6xjkq8k7wy3jwb8i1c96omv/query-cache.bin",
+    "kanban-cli/target/debug/incremental/kanban-1f1z059r1i7dp/s-hf3oo2u3fn-0yc9piy-0q6xjkq8k7wy3jwb8i1c96omv/dep-graph.bin",
+    "kanban-cli/target/debug/incremental/kanban-1f1z059r1i7dp/s-hf3oo2u3fn-0yc9piy-0q6xjkq8k7wy3jwb8i1c96omv",
+    "kanban-cli/target/debug/deps/libkanban-b52163954e7cbc7d.rmeta",
+    "kanban-cli/target/debug/incremental/kanban-1xjixy50w0x4v/s-hf3oo2u3h6-0i32qea-9nnhjzaqkcr5khagpanuxjh9j/work-products.bin",
+    "kanban-cli/target/debug/incremental/kanban-1xjixy50w0x4v/s-hf3oo2u3h6-0i32qea-9nnhjzaqkcr5khagpanuxjh9j/query-cache.bin",
+    "kanban-cli/target/debug/incremental/kanban-1xjixy50w0x4v/s-hf3oo2u3h6-0i32qea-9nnhjzaqkcr5khagpanuxjh9j/dep-graph.bin",
+    "kanban-cli/target/debug/incremental/kanban-1xjixy50w0x4v/s-hf3oo2u3h6-0i32qea-9nnhjzaqkcr5khagpanuxjh9j",
+    "prompts/status-summarizer.md",
+    "agents/prompts/status-summarizer.md",
+    "finance-cli/target/debug/build/rust_decimal-f0f36a13d4fe9f5a/out/README-lib.md",
+    "workflow/artifacts/cli_developer/cli_developer_output.md",
+    "workflow/artifacts/product_roadmap_planner/product_roadmap_planner_output.md",
+    "context/artifacts/v1/test_developer/test_developer_output.md",
+    "context/artifacts/v1/cli_developer/cli_developer_output.md",
+    "context/artifacts/v1/financial_calculator_developer/financial_calculator_developer_output.md",
+    "workflow/artifacts/financial_calculator_developer/financial_calculator_developer_output.md",
+    "context/artifacts/v1/categorization_engine_developer/categorization_engine_developer_output.md",
+    "context/artifacts/v1/code_reviewer/code_reviewer_output.md",
+    "workflow/artifacts/code_reviewer/code_reviewer_output.md",
+    "context/artifacts/v1/parser_developer/parser_developer_output.md",
+    "workflow/artifacts/parser_developer/parser_developer_output.md",
+    "context/artifacts/v1/duckdb_integration_developer/duckdb_integration_developer_output.md"
+  ]
+}
