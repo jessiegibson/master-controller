@@ -25,7 +25,16 @@
       "Bash(sqlite3:*)",
       "mcp__agents-mcp__run_agent",
       "mcp__agents-mcp__list_agents",
-      "Bash(git -C /Users/jag/workspace/github.com/jessiegibson/agents log --oneline)"
+      "Bash(git -C /Users/jag/workspace/github.com/jessiegibson/agents log --oneline)",
+      "Bash(cargo check:*)",
+      "Bash(git -C /Users/jag/workspace/github.com/jessiegibson/agents log --oneline -20)",
+      "Bash(echo:*)",
+      "Bash(cargo clean:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(git status:*)",
+      "Bash(git -C /Users/jag/workspace/github.com/jessiegibson/agents status --short CLAUDE.md)",
+      "Bash(git -C /Users/jag/workspace/github.com/jessiegibson/agents add CLAUDE.md)",
+      "Bash(git -C:*)"
     ]
   }
 }
