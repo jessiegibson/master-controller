@@ -7,13 +7,14 @@ For MVP: Simple single-agent execution
 Future: Full DAG-based workflow with parallel execution, dependencies, error handling
 """
 
+from pathlib import Path
 from typing import Dict, Any, Optional
+import time
 import traceback
 from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
 from .agent_runner import AgentRunner
-from .state_store import StateStore
 from .llm_client import LLMClient
 from .context_manager import ContextManager
 from .kanban_manager import KanbanManager
@@ -35,7 +36,7 @@ class WorkflowEngine:
         Args:
             prompts_dir: Directory containing agent prompts
             agents_config: Path to agents.yaml configuration
-            state_dir: Directory for workflow state
+            state_dir: Directory for workflow state (used for artifact file storage)
         """
         self.console = Console()
         self.llm_client = LLMClient()
@@ -44,11 +45,11 @@ class WorkflowEngine:
             agents_config_path=agents_config,
             llm_client=self.llm_client,
         )
-        self.state_store = StateStore(state_dir=state_dir)
+        self.state_dir = Path(state_dir)
 
-        # Initialize new components
+        # Initialize components
         self.context_manager = ContextManager(context_dir="context")
-        self.kanban_manager = KanbanManager(db_path="kanban/tasks.db")
+        self.kanban_manager = KanbanManager(db_path="kanban-cli/kanban/tasks.db")
         self.output_validator = OutputValidator(schemas_dir="schemas")
         self.log_manager = LogManager(log_dir="logs")
 
@@ -78,11 +79,13 @@ class WorkflowEngine:
             )
         )
 
-        # Record execution start
-        execution_id = self.state_store.record_execution(
+        # Record execution start in kanban DB
+        workflow_run_id = self.kanban_manager.get_or_create_active_workflow_run()
+        execution_id = self.kanban_manager.start_agent_execution(
+            workflow_run_id=workflow_run_id,
             agent_id=agent_id,
-            status="started",
         )
+        start_time = time.time()
 
         # Log execution start
         self.log_manager.log_execution_start(
@@ -141,14 +144,13 @@ class WorkflowEngine:
                 if validation_result["overall_status"] == "warn":
                     self.console.print(f"[yellow]⚠ Validation passed with warnings[/yellow]")
 
-            # Save artifacts if requested
+            # Save artifacts if requested (file-based, not in SQLite)
             if save_output:
-                artifact_path = self.state_store.save_artifact(
-                    agent_id=agent_id,
-                    artifact_name=f"{agent_id}_output.md",
-                    content=result["content"],
-                )
-                result["artifact_path"] = artifact_path
+                artifacts_dir = self.state_dir / "artifacts" / agent_id
+                artifacts_dir.mkdir(parents=True, exist_ok=True)
+                artifact_path = artifacts_dir / f"{agent_id}_output.md"
+                artifact_path.write_text(result["content"])
+                result["artifact_path"] = str(artifact_path)
 
                 # Store in Context Manager with versioning
                 try:
@@ -165,11 +167,16 @@ class WorkflowEngine:
                 except Exception as store_error:
                     self.console.print(f"[yellow]Warning: Could not store in Context Manager: {store_error}[/yellow]")
 
-            # Record execution completion
-            self.state_store.record_execution(
-                agent_id=agent_id,
+            # Record execution completion in kanban DB
+            duration = time.time() - start_time
+            self.kanban_manager.complete_agent_execution(
+                execution_id=execution_id,
                 status="completed",
-                result=result,
+                output_path=result.get("artifact_path"),
+                output_valid=result.get("validation_status") == "passed",
+                context_token_count=result.get("usage", {}).get("input_tokens"),
+                response_token_count=result.get("usage", {}).get("output_tokens"),
+                duration_seconds=duration,
             )
 
             # Record in Context Manager execution history
@@ -213,11 +220,13 @@ class WorkflowEngine:
             return result
 
         except Exception as e:
-            # Record execution failure
-            self.state_store.record_execution(
-                agent_id=agent_id,
+            # Record execution failure in kanban DB
+            duration = time.time() - start_time
+            self.kanban_manager.complete_agent_execution(
+                execution_id=execution_id,
                 status="failed",
-                error=str(e),
+                error_message=str(e),
+                duration_seconds=duration,
             )
 
             # Log execution error
@@ -268,7 +277,7 @@ class WorkflowEngine:
         Returns:
             List of execution records
         """
-        return self.state_store.get_executions(agent_id=agent_id, limit=limit)
+        return self.kanban_manager.get_agent_executions(agent_id=agent_id, limit=limit)
 
     def get_last_output(self, agent_id: str) -> Optional[str]:
         """Get last output from an agent.
@@ -279,7 +288,7 @@ class WorkflowEngine:
         Returns:
             Last output content or None
         """
-        return self.state_store.load_artifact(
-            agent_id=agent_id,
-            artifact_name=f"{agent_id}_output.md",
-        )
+        artifact_path = self.state_dir / "artifacts" / agent_id / f"{agent_id}_output.md"
+        if not artifact_path.exists():
+            return None
+        return artifact_path.read_text()

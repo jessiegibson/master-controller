@@ -1,23 +1,25 @@
 """
-Kanban Manager - Manages tasks, sprints, and agent assignments.
+Kanban Manager - Manages tasks, features, and agent assignments.
 
 Provides SQLite-based task tracking with:
-- Sprint management
+- Feature management
 - Task state machine (todo → in-progress → in-qa → done)
 - Blocker tracking with auto-status changes
 - Agent workload management
 - Execution history and metrics
+- Workflow run and agent execution tracking
 """
 
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 import sqlite3
 import json
+import uuid
 from datetime import datetime, date
 
 
 class KanbanManager:
-    """Manages tasks, sprints, and agent assignments with state machine validation."""
+    """Manages tasks, features, and agent assignments with state machine validation."""
 
     # State transition matrix
     VALID_TRANSITIONS = {
@@ -28,7 +30,7 @@ class KanbanManager:
         'done': [],  # Terminal state
     }
 
-    def __init__(self, db_path: str = "kanban/tasks.db"):
+    def __init__(self, db_path: str = "kanban-cli/kanban/tasks.db"):
         """Initialize Kanban Manager.
 
         Args:
@@ -58,16 +60,15 @@ class KanbanManager:
 
         try:
             # ============================================
-            # Sprints
+            # Features
             # ============================================
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS sprints (
+                CREATE TABLE IF NOT EXISTS features (
                     id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
-                    goal TEXT,
-                    start_date DATE NOT NULL,
-                    end_date DATE NOT NULL,
-                    status TEXT NOT NULL DEFAULT 'planned' CHECK(status IN ('planned', 'active', 'completed', 'cancelled')),
+                    description TEXT,
+                    status TEXT NOT NULL DEFAULT 'active',
+                    color TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
@@ -79,10 +80,10 @@ class KanbanManager:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS tasks (
                     id TEXT PRIMARY KEY,
-                    sprint_id TEXT NOT NULL,
+                    feature_id TEXT NOT NULL,
                     title TEXT NOT NULL,
                     description TEXT,
-                    status TEXT NOT NULL DEFAULT 'todo' CHECK(status IN ('todo', 'in-progress', 'blocked', 'in-qa', 'done')),
+                    status TEXT NOT NULL DEFAULT 'todo',
                     priority INTEGER NOT NULL DEFAULT 100,
                     assigned_agent TEXT,
                     estimated_hours REAL,
@@ -91,14 +92,15 @@ class KanbanManager:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     started_at TIMESTAMP,
                     completed_at TIMESTAMP,
-                    FOREIGN KEY (sprint_id) REFERENCES sprints(id) ON DELETE CASCADE
+                    FOREIGN KEY (feature_id) REFERENCES features(id)
                 )
             """)
 
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_tasks_sprint ON tasks(sprint_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_features_status ON features(status)")
+
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_tasks_feature ON tasks(feature_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_tasks_agent ON tasks(assigned_agent)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks(priority)")
 
             # ============================================
             # Task Dependencies
@@ -108,8 +110,8 @@ class KanbanManager:
                     task_id TEXT NOT NULL,
                     depends_on_task_id TEXT NOT NULL,
                     PRIMARY KEY (task_id, depends_on_task_id),
-                    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
-                    FOREIGN KEY (depends_on_task_id) REFERENCES tasks(id) ON DELETE CASCADE
+                    FOREIGN KEY (task_id) REFERENCES tasks(id),
+                    FOREIGN KEY (depends_on_task_id) REFERENCES tasks(id)
                 )
             """)
 
@@ -120,16 +122,16 @@ class KanbanManager:
                 CREATE TABLE IF NOT EXISTS blockers (
                     id TEXT PRIMARY KEY,
                     task_id TEXT NOT NULL,
-                    type TEXT NOT NULL CHECK(type IN ('dependency', 'technical', 'clarification', 'resource', 'external', 'approval')),
+                    type TEXT NOT NULL,
                     description TEXT NOT NULL,
                     blocking_task_id TEXT,
-                    status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'resolved', 'escalated')),
+                    status TEXT NOT NULL DEFAULT 'active',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     resolved_at TIMESTAMP,
                     escalated_at TIMESTAMP,
                     resolution_notes TEXT,
-                    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
-                    FOREIGN KEY (blocking_task_id) REFERENCES tasks(id) ON DELETE SET NULL
+                    FOREIGN KEY (task_id) REFERENCES tasks(id),
+                    FOREIGN KEY (blocking_task_id) REFERENCES tasks(id)
                 )
             """)
 
@@ -143,8 +145,8 @@ class KanbanManager:
                 CREATE TABLE IF NOT EXISTS agents (
                     id TEXT PRIMARY KEY,
                     name TEXT NOT NULL,
-                    type TEXT NOT NULL CHECK(type IN ('developer', 'reviewer', 'architect', 'manager', 'specialist')),
-                    status TEXT NOT NULL DEFAULT 'available' CHECK(status IN ('available', 'busy', 'offline')),
+                    type TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'available',
                     max_concurrent_tasks INTEGER DEFAULT 2,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
@@ -201,7 +203,7 @@ class KanbanManager:
                     new_value TEXT,
                     changed_by TEXT NOT NULL,
                     changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+                    FOREIGN KEY (task_id) REFERENCES tasks(id)
                 )
             """)
 
@@ -218,7 +220,7 @@ class KanbanManager:
                     author TEXT NOT NULL,
                     content TEXT NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+                    FOREIGN KEY (task_id) REFERENCES tasks(id)
                 )
             """)
 
@@ -230,13 +232,13 @@ class KanbanManager:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS workflow_runs (
                     id TEXT PRIMARY KEY,
-                    sprint_id TEXT NOT NULL,
-                    status TEXT NOT NULL CHECK(status IN ('running', 'paused', 'completed', 'failed')),
+                    feature_id TEXT,
+                    status TEXT NOT NULL,
                     started_at TIMESTAMP NOT NULL,
                     completed_at TIMESTAMP,
                     error_message TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (sprint_id) REFERENCES sprints(id) ON DELETE CASCADE
+                    FOREIGN KEY (feature_id) REFERENCES features(id)
                 )
             """)
 
@@ -249,7 +251,7 @@ class KanbanManager:
                     workflow_run_id TEXT NOT NULL,
                     agent_id TEXT NOT NULL,
                     task_id TEXT,
-                    status TEXT NOT NULL CHECK(status IN ('pending', 'running', 'completed', 'failed', 'skipped')),
+                    status TEXT NOT NULL,
                     attempt_number INTEGER DEFAULT 1,
                     started_at TIMESTAMP,
                     completed_at TIMESTAMP,
@@ -260,9 +262,9 @@ class KanbanManager:
                     response_token_count INTEGER,
                     duration_seconds REAL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (workflow_run_id) REFERENCES workflow_runs(id) ON DELETE CASCADE,
+                    FOREIGN KEY (workflow_run_id) REFERENCES workflow_runs(id),
                     FOREIGN KEY (agent_id) REFERENCES agents(id),
-                    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE SET NULL
+                    FOREIGN KEY (task_id) REFERENCES tasks(id)
                 )
             """)
 
@@ -277,10 +279,10 @@ class KanbanManager:
                 CREATE TABLE IF NOT EXISTS workflow_checkpoints (
                     id TEXT PRIMARY KEY,
                     workflow_run_id TEXT NOT NULL,
-                    checkpoint_type TEXT NOT NULL CHECK(checkpoint_type IN ('wave_complete', 'agent_complete', 'manual')),
+                    checkpoint_type TEXT NOT NULL,
                     checkpoint_data TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (workflow_run_id) REFERENCES workflow_runs(id) ON DELETE CASCADE
+                    FOREIGN KEY (workflow_run_id) REFERENCES workflow_runs(id)
                 )
             """)
 
@@ -298,7 +300,7 @@ class KanbanManager:
 
     def create_task(
         self,
-        sprint_id: str,
+        feature_id: str,
         title: str,
         description: Optional[str] = None,
         priority: int = 100,
@@ -308,7 +310,7 @@ class KanbanManager:
         """Create a new task.
 
         Args:
-            sprint_id: Sprint this task belongs to
+            feature_id: Feature this task belongs to
             title: Task title
             description: Detailed description
             priority: Priority (lower = higher priority)
@@ -319,20 +321,20 @@ class KanbanManager:
             Task dict
 
         Raises:
-            Exception: If sprint doesn't exist or task creation fails
+            Exception: If feature doesn't exist or task creation fails
         """
         conn = self._get_connection()
         cursor = conn.cursor()
 
         try:
             # Generate task ID
-            task_id = self._generate_task_id(sprint_id, cursor)
+            task_id = self._generate_task_id(feature_id, cursor)
 
             # Insert task
             cursor.execute("""
-                INSERT INTO tasks (id, sprint_id, title, description, status, priority, estimated_hours)
+                INSERT INTO tasks (id, feature_id, title, description, status, priority, estimated_hours)
                 VALUES (?, ?, ?, ?, 'todo', ?, ?)
-            """, (task_id, sprint_id, title, description, priority, estimated_hours))
+            """, (task_id, feature_id, title, description, priority, estimated_hours))
 
             # Insert dependencies if provided
             if dependencies:
@@ -373,7 +375,7 @@ class KanbanManager:
 
         try:
             cursor.execute("""
-                SELECT id, sprint_id, title, description, status, priority, assigned_agent,
+                SELECT id, feature_id, title, description, status, priority, assigned_agent,
                        estimated_hours, actual_hours, created_at, updated_at, started_at, completed_at
                 FROM tasks
                 WHERE id = ?
@@ -401,7 +403,7 @@ class KanbanManager:
 
             return {
                 "id": row["id"],
-                "sprint_id": row["sprint_id"],
+                "feature_id": row["feature_id"],
                 "title": row["title"],
                 "description": row["description"],
                 "status": row["status"],
@@ -711,12 +713,12 @@ class KanbanManager:
 
     def get_active_blockers(
         self,
-        sprint_id: Optional[str] = None
+        feature_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Get all active blockers.
 
         Args:
-            sprint_id: Filter by sprint
+            feature_id: Filter by feature
 
         Returns:
             List of blocker dicts with task info
@@ -725,15 +727,15 @@ class KanbanManager:
         cursor = conn.cursor()
 
         try:
-            if sprint_id:
+            if feature_id:
                 cursor.execute("""
                     SELECT b.id, b.task_id, b.type, b.description, b.blocking_task_id,
                            b.status, b.created_at, t.title as task_title
                     FROM blockers b
                     JOIN tasks t ON b.task_id = t.id
-                    WHERE b.status = 'active' AND t.sprint_id = ?
+                    WHERE b.status = 'active' AND t.feature_id = ?
                     ORDER BY b.created_at DESC
-                """, (sprint_id,))
+                """, (feature_id,))
             else:
                 cursor.execute("""
                     SELECT b.id, b.task_id, b.type, b.description, b.blocking_task_id,
@@ -754,27 +756,27 @@ class KanbanManager:
             conn.close()
 
     # ========================================
-    # Sprint Operations
+    # Feature Operations
     # ========================================
 
-    def get_sprint(self, sprint_id: str) -> Optional[Dict[str, Any]]:
-        """Get sprint with task counts.
+    def get_feature(self, feature_id: str) -> Optional[Dict[str, Any]]:
+        """Get feature with task counts.
 
         Args:
-            sprint_id: Sprint ID
+            feature_id: Feature ID
 
         Returns:
-            Sprint dict with task breakdowns
+            Feature dict with task breakdowns
         """
         conn = self._get_connection()
         cursor = conn.cursor()
 
         try:
             cursor.execute("""
-                SELECT id, name, goal, start_date, end_date, status, created_at, updated_at
-                FROM sprints
+                SELECT id, name, description, status, color, created_at, updated_at
+                FROM features
                 WHERE id = ?
-            """, (sprint_id,))
+            """, (feature_id,))
 
             row = cursor.fetchone()
             if not row:
@@ -784,19 +786,18 @@ class KanbanManager:
             cursor.execute("""
                 SELECT status, COUNT(*) as count
                 FROM tasks
-                WHERE sprint_id = ?
+                WHERE feature_id = ?
                 GROUP BY status
-            """, (sprint_id,))
+            """, (feature_id,))
 
             task_counts = {r["status"]: r["count"] for r in cursor.fetchall()}
 
             return {
                 "id": row["id"],
                 "name": row["name"],
-                "goal": row["goal"],
-                "start_date": row["start_date"],
-                "end_date": row["end_date"],
+                "description": row["description"],
                 "status": row["status"],
+                "color": row["color"],
                 "created_at": row["created_at"],
                 "updated_at": row["updated_at"],
                 "task_counts": task_counts,
@@ -806,11 +807,11 @@ class KanbanManager:
         finally:
             conn.close()
 
-    def get_sprint_metrics(self, sprint_id: str) -> Dict[str, Any]:
-        """Calculate sprint metrics.
+    def get_feature_metrics(self, feature_id: str) -> Dict[str, Any]:
+        """Calculate feature metrics.
 
         Args:
-            sprint_id: Sprint ID
+            feature_id: Feature ID
 
         Returns:
             Metrics dict with completion rate, velocity, burndown
@@ -828,8 +829,8 @@ class KanbanManager:
                     SUM(estimated_hours) as total_estimated,
                     SUM(CASE WHEN status = 'done' THEN actual_hours ELSE 0 END) as total_actual
                 FROM tasks
-                WHERE sprint_id = ?
-            """, (sprint_id,))
+                WHERE feature_id = ?
+            """, (feature_id,))
 
             row = cursor.fetchone()
 
@@ -839,7 +840,7 @@ class KanbanManager:
             completion_rate = (done / total * 100) if total > 0 else 0
 
             return {
-                "sprint_id": sprint_id,
+                "feature_id": feature_id,
                 "total_tasks": total,
                 "completed_tasks": done,
                 "blocked_tasks": blocked,
@@ -909,7 +910,7 @@ class KanbanManager:
         """Query tasks with filters.
 
         Args:
-            filters: Dict with sprint_id, status, assigned_agent filters
+            filters: Dict with feature_id, status, assigned_agent filters
             sort_by: Field to sort by
             sort_order: asc or desc
             limit: Max results
@@ -925,9 +926,9 @@ class KanbanManager:
             params = []
 
             if filters:
-                if "sprint_id" in filters:
-                    query += " AND sprint_id = ?"
-                    params.append(filters["sprint_id"])
+                if "feature_id" in filters:
+                    query += " AND feature_id = ?"
+                    params.append(filters["feature_id"])
                 if "status" in filters:
                     query += " AND status = ?"
                     params.append(filters["status"])
@@ -945,6 +946,280 @@ class KanbanManager:
                 tasks.append(dict(row))
 
             return tasks
+
+        finally:
+            conn.close()
+
+    # ========================================
+    # Workflow Run Operations
+    # ========================================
+
+    def create_workflow_run(self, feature_id: Optional[str] = None) -> str:
+        """Create a new workflow run.
+
+        Args:
+            feature_id: Optional feature this run belongs to
+
+        Returns:
+            Workflow run ID
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+
+        try:
+            run_id = f"wfr_{uuid.uuid4().hex[:12]}"
+            now = datetime.now().isoformat()
+
+            cursor.execute("""
+                INSERT INTO workflow_runs (id, feature_id, status, started_at)
+                VALUES (?, ?, 'running', ?)
+            """, (run_id, feature_id, now))
+
+            conn.commit()
+            return run_id
+
+        except Exception as e:
+            conn.rollback()
+            raise Exception(f"Failed to create workflow run: {e}")
+        finally:
+            conn.close()
+
+    def complete_workflow_run(
+        self,
+        run_id: str,
+        status: str = "completed",
+        error_message: Optional[str] = None
+    ):
+        """Complete a workflow run.
+
+        Args:
+            run_id: Workflow run ID
+            status: Final status (completed or failed)
+            error_message: Error message if failed
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute("""
+                UPDATE workflow_runs
+                SET status = ?, completed_at = CURRENT_TIMESTAMP, error_message = ?
+                WHERE id = ?
+            """, (status, error_message, run_id))
+
+            conn.commit()
+
+        except Exception as e:
+            conn.rollback()
+            raise Exception(f"Failed to complete workflow run: {e}")
+        finally:
+            conn.close()
+
+    def get_or_create_active_workflow_run(self) -> str:
+        """Get the latest running workflow run, or create one.
+
+        Returns:
+            Workflow run ID
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute("""
+                SELECT id FROM workflow_runs
+                WHERE status = 'running'
+                ORDER BY started_at DESC
+                LIMIT 1
+            """)
+            row = cursor.fetchone()
+            if row:
+                return row["id"]
+        finally:
+            conn.close()
+
+        return self.create_workflow_run()
+
+    # ========================================
+    # Agent Execution Operations
+    # ========================================
+
+    def start_agent_execution(
+        self,
+        workflow_run_id: str,
+        agent_id: str,
+        task_id: Optional[str] = None
+    ) -> str:
+        """Record the start of an agent execution.
+
+        Args:
+            workflow_run_id: Parent workflow run
+            agent_id: Agent being executed
+            task_id: Optional associated task
+
+        Returns:
+            Execution ID
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+
+        try:
+            execution_id = f"exec_{agent_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+            cursor.execute("""
+                INSERT INTO agent_executions
+                    (id, workflow_run_id, agent_id, task_id, status, started_at)
+                VALUES (?, ?, ?, ?, 'running', CURRENT_TIMESTAMP)
+            """, (execution_id, workflow_run_id, agent_id, task_id))
+
+            conn.commit()
+            return execution_id
+
+        except Exception as e:
+            conn.rollback()
+            raise Exception(f"Failed to start agent execution: {e}")
+        finally:
+            conn.close()
+
+    def complete_agent_execution(
+        self,
+        execution_id: str,
+        status: str,
+        output_path: Optional[str] = None,
+        output_valid: Optional[bool] = None,
+        error_message: Optional[str] = None,
+        context_token_count: Optional[int] = None,
+        response_token_count: Optional[int] = None,
+        duration_seconds: Optional[float] = None,
+    ):
+        """Record the completion of an agent execution.
+
+        Args:
+            execution_id: Execution to update
+            status: Final status (completed or failed)
+            output_path: Path to output artifact
+            output_valid: Whether output passed validation
+            error_message: Error message if failed
+            context_token_count: Input tokens used
+            response_token_count: Output tokens used
+            duration_seconds: Execution duration
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute("""
+                UPDATE agent_executions
+                SET status = ?,
+                    completed_at = CURRENT_TIMESTAMP,
+                    output_path = ?,
+                    output_valid = ?,
+                    error_message = ?,
+                    context_token_count = ?,
+                    response_token_count = ?,
+                    duration_seconds = ?
+                WHERE id = ?
+            """, (
+                status, output_path, output_valid, error_message,
+                context_token_count, response_token_count, duration_seconds,
+                execution_id
+            ))
+
+            conn.commit()
+
+        except Exception as e:
+            conn.rollback()
+            raise Exception(f"Failed to complete agent execution: {e}")
+        finally:
+            conn.close()
+
+    def get_agent_executions(
+        self,
+        agent_id: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """Query agent executions with optional filters.
+
+        Args:
+            agent_id: Filter by agent
+            status: Filter by status
+            limit: Max results
+
+        Returns:
+            List of execution dicts
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+
+        try:
+            query = "SELECT * FROM agent_executions WHERE 1=1"
+            params: list = []
+
+            if agent_id:
+                query += " AND agent_id = ?"
+                params.append(agent_id)
+            if status:
+                query += " AND status = ?"
+                params.append(status)
+
+            query += " ORDER BY started_at DESC LIMIT ?"
+            params.append(limit)
+
+            cursor.execute(query, params)
+            return [dict(row) for row in cursor.fetchall()]
+
+        finally:
+            conn.close()
+
+    def get_current_workflow_state(self) -> Dict[str, Any]:
+        """Derive current workflow state from DB data.
+
+        Returns:
+            Dict with completed_agents, next_agents, current_phase, last_execution
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+
+        try:
+            # Get completed agents
+            cursor.execute("""
+                SELECT DISTINCT agent_id FROM agent_executions
+                WHERE status = 'completed'
+            """)
+            completed_agents = [row["agent_id"] for row in cursor.fetchall()]
+
+            # Get last execution
+            cursor.execute("""
+                SELECT * FROM agent_executions
+                ORDER BY started_at DESC
+                LIMIT 1
+            """)
+            last_exec_row = cursor.fetchone()
+            last_execution = dict(last_exec_row) if last_exec_row else None
+
+            # Get task summary
+            cursor.execute("""
+                SELECT status, COUNT(*) as count
+                FROM tasks
+                GROUP BY status
+            """)
+            task_counts = {row["status"]: row["count"] for row in cursor.fetchall()}
+
+            # Get latest workflow run
+            cursor.execute("""
+                SELECT id, status FROM workflow_runs
+                ORDER BY started_at DESC
+                LIMIT 1
+            """)
+            run_row = cursor.fetchone()
+            latest_run = dict(run_row) if run_row else None
+
+            return {
+                "completed_agents": completed_agents,
+                "task_counts": task_counts,
+                "last_execution": last_execution,
+                "latest_workflow_run": latest_run,
+            }
 
         finally:
             conn.close()
@@ -969,22 +1244,22 @@ class KanbanManager:
         """
         return to_status in self.VALID_TRANSITIONS.get(from_status, [])
 
-    def _generate_task_id(self, sprint_id: str, cursor) -> str:
-        """Generate next task ID for sprint.
+    def _generate_task_id(self, feature_id: str, cursor) -> str:
+        """Generate next task ID for feature.
 
         Args:
-            sprint_id: Sprint ID
+            feature_id: Feature ID
             cursor: Database cursor
 
         Returns:
-            Task ID in format T-{sprint_id}-{sequence}
+            Task ID in format T-{feature_id}-{sequence}
         """
         cursor.execute("""
             SELECT id FROM tasks
-            WHERE sprint_id = ?
+            WHERE feature_id = ?
             ORDER BY id DESC
             LIMIT 1
-        """, (sprint_id,))
+        """, (feature_id,))
 
         row = cursor.fetchone()
         if row:
@@ -998,4 +1273,4 @@ class KanbanManager:
         else:
             sequence = 1
 
-        return f"T-{sprint_id}-{sequence:03d}"
+        return f"T-{feature_id}-{sequence:03d}"
