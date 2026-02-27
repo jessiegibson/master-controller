@@ -25,6 +25,7 @@ pub struct Task {
 
 impl Task {
     /// Create a new task with minimal required fields
+    #[allow(dead_code)]
     pub fn new(id: String, feature_id: String, title: String) -> Self {
         let now = Utc::now();
         Self {
@@ -45,16 +46,19 @@ impl Task {
     }
 
     /// Check if the task is in a terminal state
+    #[allow(dead_code)]
     pub fn is_complete(&self) -> bool {
         self.status == TaskStatus::Done
     }
 
     /// Check if the task is blocked
+    #[allow(dead_code)]
     pub fn is_blocked(&self) -> bool {
         self.status == TaskStatus::Blocked
     }
 
     /// Check if the task is active (in progress)
+    #[allow(dead_code)]
     pub fn is_active(&self) -> bool {
         self.status == TaskStatus::InProgress
     }
@@ -107,6 +111,7 @@ impl TaskBuilder {
     }
 
     /// Get the dependencies
+    #[allow(dead_code)]
     pub fn dependencies(&self) -> &[String] {
         &self.dependencies
     }
@@ -148,16 +153,6 @@ pub struct TaskHistory {
     pub new_value: Option<String>,
     pub changed_by: String,
     pub changed_at: DateTime<Utc>,
-}
-
-/// Task comment
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TaskComment {
-    pub id: String,
-    pub task_id: String,
-    pub author: String,
-    pub content: String,
-    pub created_at: DateTime<Utc>,
 }
 
 #[cfg(test)]

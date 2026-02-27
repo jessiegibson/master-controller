@@ -18,6 +18,7 @@ pub enum TaskStatus {
 
 impl TaskStatus {
     /// Get all valid statuses
+    #[allow(dead_code)]
     pub fn all() -> &'static [TaskStatus] {
         &[
             TaskStatus::Todo,
@@ -303,6 +304,7 @@ impl StateMachine {
     }
 
     /// Attempt to transition, returning an error if invalid
+    #[allow(dead_code)]
     pub fn transition(from: &TaskStatus, to: &TaskStatus) -> Result<TaskStatus, StateMachineError> {
         if Self::can_transition(from, to) {
             Ok(*to)

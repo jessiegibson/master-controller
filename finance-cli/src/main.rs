@@ -31,6 +31,12 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
+    // Initialize encryption subsystem
+    if let Err(e) = finance_cli::encryption::init() {
+        eprintln!("Failed to initialize encryption: {e}");
+        return ExitCode::from(3);
+    }
+
     // Run the main application logic
     match run() {
         Ok(()) => {

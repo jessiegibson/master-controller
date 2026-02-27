@@ -18,6 +18,7 @@ pub struct Agent {
 
 impl Agent {
     /// Create a new agent
+    #[allow(dead_code)]
     pub fn new(id: String, name: String, agent_type: AgentType) -> Self {
         Self {
             id,
@@ -30,6 +31,7 @@ impl Agent {
     }
 
     /// Check if the agent is available for new tasks
+    #[allow(dead_code)]
     pub fn is_available(&self) -> bool {
         self.status == AgentStatus::Available
     }
@@ -52,6 +54,7 @@ impl AgentWorkload {
     }
 
     /// Get remaining capacity
+    #[allow(dead_code)]
     pub fn remaining_capacity(&self) -> i32 {
         (self.agent.max_concurrent_tasks - self.current_tasks).max(0)
     }

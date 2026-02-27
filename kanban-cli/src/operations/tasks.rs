@@ -2,7 +2,6 @@
 
 use chrono::{DateTime, Utc};
 use rusqlite::{params, Row};
-use uuid::Uuid;
 
 use crate::db::Database;
 use crate::models::{CreateTaskRequest, Task, TaskHistory};
@@ -324,64 +323,6 @@ pub fn get_task_dependencies(db: &Database, task_id: &str) -> Result<Vec<Task>> 
         .collect::<std::result::Result<Vec<_>, _>>()?;
 
     Ok(tasks)
-}
-
-/// Add a dependency between tasks
-pub fn add_task_dependency(db: &Database, task_id: &str, depends_on: &str) -> Result<()> {
-    // Verify both tasks exist
-    get_task(db, task_id)?;
-    get_task(db, depends_on)?;
-
-    // Check for circular dependency
-    if would_create_cycle(db, task_id, depends_on)? {
-        return Err(OperationError::Dependency(
-            "Cannot add dependency: would create circular reference".to_string(),
-        ));
-    }
-
-    db.conn().execute(
-        "INSERT OR IGNORE INTO task_dependencies (task_id, depends_on_task_id) VALUES (?, ?)",
-        params![task_id, depends_on],
-    )?;
-
-    Ok(())
-}
-
-/// Check if adding a dependency would create a cycle
-fn would_create_cycle(db: &Database, task_id: &str, depends_on: &str) -> Result<bool> {
-    // Simple cycle check: see if depends_on already depends on task_id (directly or indirectly)
-    let mut visited = std::collections::HashSet::new();
-    let mut stack = vec![depends_on.to_string()];
-
-    while let Some(current) = stack.pop() {
-        if current == task_id {
-            return Ok(true);
-        }
-        if visited.contains(&current) {
-            continue;
-        }
-        visited.insert(current.clone());
-
-        let deps = get_task_dependencies(db, &current)?;
-        for dep in deps {
-            stack.push(dep.id);
-        }
-    }
-
-    Ok(false)
-}
-
-/// Add a comment to a task
-pub fn add_task_comment(db: &Database, task_id: &str, author: &str, content: &str) -> Result<()> {
-    let id = Uuid::new_v4().to_string();
-    let now = Utc::now().to_rfc3339();
-
-    db.conn().execute(
-        "INSERT INTO task_comments (id, task_id, author, content, created_at) VALUES (?, ?, ?, ?, ?)",
-        params![id, task_id, author, content, now],
-    )?;
-
-    Ok(())
 }
 
 #[cfg(test)]

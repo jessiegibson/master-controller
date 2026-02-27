@@ -20,6 +20,7 @@ pub struct Feature {
 
 impl Feature {
     /// Create a new feature
+    #[allow(dead_code)]
     pub fn new(id: String, name: String) -> Self {
         let now = Utc::now();
         Self {
@@ -34,6 +35,7 @@ impl Feature {
     }
 
     /// Check if the feature is active
+    #[allow(dead_code)]
     pub fn is_active(&self) -> bool {
         self.status == FeatureStatus::Active
     }

@@ -4,14 +4,6 @@ use crate::models::{AgentWorkload, Blocker, Feature, FeatureSummary, Task, TaskH
 use crate::operations::metrics::FeatureMetrics;
 use crate::state_machine::TaskStatus;
 
-/// Output format options
-#[derive(Debug, Clone, Copy, Default)]
-pub enum OutputFormat {
-    #[default]
-    Table,
-    Json,
-}
-
 /// Format tasks as a table
 pub fn format_tasks_table(tasks: &[Task]) -> String {
     if tasks.is_empty() {

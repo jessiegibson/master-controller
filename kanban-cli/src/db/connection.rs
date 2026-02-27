@@ -20,6 +20,7 @@ impl Database {
     }
 
     /// Create an in-memory database (for testing)
+    #[allow(dead_code)]
     pub fn in_memory() -> SqlResult<Self> {
         let conn = Connection::open_in_memory()?;
         let db = Self { conn };
@@ -40,11 +41,13 @@ impl Database {
     }
 
     /// Get a mutable reference to the underlying connection
+    #[allow(dead_code)]
     pub fn conn_mut(&mut self) -> &mut Connection {
         &mut self.conn
     }
 
     /// Begin a transaction
+    #[allow(dead_code)]
     pub fn transaction(&mut self) -> SqlResult<rusqlite::Transaction<'_>> {
         self.conn.transaction()
     }

@@ -22,6 +22,7 @@ pub struct Blocker {
 
 impl Blocker {
     /// Create a new blocker
+    #[allow(dead_code)]
     pub fn new(id: String, task_id: String, blocker_type: BlockerType, description: String) -> Self {
         Self {
             id,
@@ -38,16 +39,19 @@ impl Blocker {
     }
 
     /// Check if the blocker is active
+    #[allow(dead_code)]
     pub fn is_active(&self) -> bool {
         self.status == BlockerStatus::Active
     }
 
     /// Check if the blocker is resolved
+    #[allow(dead_code)]
     pub fn is_resolved(&self) -> bool {
         self.status == BlockerStatus::Resolved
     }
 
     /// Get duration in hours since created
+    #[allow(dead_code)]
     pub fn duration_hours(&self) -> f64 {
         let end = self.resolved_at.unwrap_or_else(Utc::now);
         (end - self.created_at).num_minutes() as f64 / 60.0
@@ -61,15 +65,6 @@ pub struct CreateBlockerRequest {
     pub blocker_type: BlockerType,
     pub description: String,
     pub blocking_task_id: Option<String>,
-}
-
-/// Blocker with additional context
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BlockerDetail {
-    pub blocker: Blocker,
-    pub task_title: String,
-    pub blocking_task_title: Option<String>,
-    pub blocked_tasks: Vec<String>,
 }
 
 #[cfg(test)]

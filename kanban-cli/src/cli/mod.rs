@@ -4,4 +4,3 @@ mod commands;
 mod output;
 
 pub use commands::Cli;
-pub use output::OutputFormat;

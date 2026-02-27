@@ -40,5 +40,6 @@
       "mcp__agents-mcp__get_agent_dependencies",
       "mcp__agents-mcp__suggest_agent"
     ]
-  }
+  },
+  "outputStyle": "default"
 }

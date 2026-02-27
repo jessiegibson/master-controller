@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 /// Status of a workflow run
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[allow(dead_code)]
 pub enum WorkflowStatus {
     Running,
     Paused,
@@ -14,6 +15,7 @@ pub enum WorkflowStatus {
 }
 
 impl WorkflowStatus {
+    #[allow(dead_code)]
     pub fn as_str(&self) -> &'static str {
         match self {
             WorkflowStatus::Running => "running",
@@ -27,6 +29,7 @@ impl WorkflowStatus {
 /// Status of an agent execution
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[allow(dead_code)]
 pub enum ExecutionStatus {
     Pending,
     Running,
@@ -36,6 +39,7 @@ pub enum ExecutionStatus {
 }
 
 impl ExecutionStatus {
+    #[allow(dead_code)]
     pub fn as_str(&self) -> &'static str {
         match self {
             ExecutionStatus::Pending => "pending",
@@ -49,6 +53,7 @@ impl ExecutionStatus {
 
 /// A workflow run instance
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct WorkflowRun {
     pub id: String,
     pub sprint_id: String,
@@ -61,6 +66,7 @@ pub struct WorkflowRun {
 
 impl WorkflowRun {
     /// Create a new workflow run
+    #[allow(dead_code)]
     pub fn new(id: String, sprint_id: String) -> Self {
         let now = Utc::now();
         Self {
@@ -75,11 +81,13 @@ impl WorkflowRun {
     }
 
     /// Check if the workflow is still running
+    #[allow(dead_code)]
     pub fn is_running(&self) -> bool {
         self.status == WorkflowStatus::Running
     }
 
     /// Get duration in seconds (if completed)
+    #[allow(dead_code)]
     pub fn duration_seconds(&self) -> Option<f64> {
         self.completed_at
             .map(|end| (end - self.started_at).num_milliseconds() as f64 / 1000.0)
@@ -88,6 +96,7 @@ impl WorkflowRun {
 
 /// An agent execution within a workflow run
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct AgentExecution {
     pub id: String,
     pub workflow_run_id: String,
@@ -108,6 +117,7 @@ pub struct AgentExecution {
 
 impl AgentExecution {
     /// Create a new pending agent execution
+    #[allow(dead_code)]
     pub fn new(id: String, workflow_run_id: String, agent_id: String) -> Self {
         Self {
             id,
@@ -131,6 +141,7 @@ impl AgentExecution {
 
 /// A workflow checkpoint for resumability
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct WorkflowCheckpoint {
     pub id: String,
     pub workflow_run_id: String,

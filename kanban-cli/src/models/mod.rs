@@ -9,5 +9,4 @@ mod workflow;
 pub use agent::{Agent, AgentWorkload};
 pub use blocker::{Blocker, CreateBlockerRequest};
 pub use feature::{CreateFeatureRequest, Feature, FeatureStatus, FeatureSummary};
-pub use task::{CreateTaskRequest, Task, TaskBuilder, TaskComment, TaskHistory};
-pub use workflow::{AgentExecution, WorkflowCheckpoint, WorkflowRun};
+pub use task::{CreateTaskRequest, Task, TaskBuilder, TaskHistory};

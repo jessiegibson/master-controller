@@ -127,19 +127,6 @@ pub fn list_active_blockers(db: &Database, feature_id: Option<&str>) -> Result<V
     Ok(blockers)
 }
 
-/// List all blockers for a task
-pub fn list_task_blockers(db: &Database, task_id: &str) -> Result<Vec<Blocker>> {
-    let mut stmt = db
-        .conn()
-        .prepare("SELECT * FROM blockers WHERE task_id = ? ORDER BY created_at DESC")?;
-
-    let blockers = stmt
-        .query_map(params![task_id], blocker_from_row)?
-        .collect::<std::result::Result<Vec<_>, _>>()?;
-
-    Ok(blockers)
-}
-
 /// Resolve a blocker
 pub fn resolve_blocker(
     db: &Database,
