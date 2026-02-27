@@ -195,4 +195,139 @@ mod tests {
         assert_eq!(result.transactions.len(), 1);
         assert_eq!(result.transactions[0].description, "Test Purchase");
     }
+
+    #[test]
+    fn test_parse_chase_csv() {
+        let csv = "Details,Posting Date,Description,Amount,Type,Balance,Check or Slip #\n\
+                   DEBIT,01/15/2024,AMAZON PURCHASE,-50.00,ACH_DEBIT,1000.00,";
+        let account = test_account();
+        let result = parse_csv_content(csv, &account, Some("chase")).unwrap();
+
+        assert_eq!(result.transactions.len(), 1);
+        assert_eq!(result.institution, Some("Chase".to_string()));
+        assert_eq!(result.transactions[0].description, "AMAZON PURCHASE");
+        assert_eq!(result.transactions[0].amount.0, Decimal::from_str("-50.00").unwrap());
+    }
+
+    #[test]
+    fn test_parse_bofa_csv() {
+        let csv = "Date,Description,Amount,Running Bal.\n\
+                   01/15/2024,PURCHASE AT STORE,-25.00,500.00";
+        let account = test_account();
+        let result = parse_csv_content(csv, &account, Some("bank_of_america")).unwrap();
+
+        assert_eq!(result.transactions.len(), 1);
+        assert_eq!(result.institution, Some("Bank of America".to_string()));
+        assert_eq!(result.transactions[0].description, "PURCHASE AT STORE");
+        assert_eq!(result.transactions[0].amount.0, Decimal::from_str("-25.00").unwrap());
+    }
+
+    #[test]
+    fn test_parse_ally_csv() {
+        let csv = "Date,Time,Amount,Type,Description\n\
+                   2024-01-15,10:30:00,-50.00,Withdrawal,ATM WITHDRAWAL";
+        let account = test_account();
+        let result = parse_csv_content(csv, &account, Some("ally")).unwrap();
+
+        assert_eq!(result.transactions.len(), 1);
+        assert_eq!(result.institution, Some("Ally".to_string()));
+        assert_eq!(result.transactions[0].description, "ATM WITHDRAWAL");
+        assert_eq!(result.transactions[0].amount.0, Decimal::from_str("-50.00").unwrap());
+    }
+
+    #[test]
+    fn test_parse_discover_csv() {
+        let csv = "Trans. Date,Post Date,Description,Amount,Category\n\
+                   01/15/2024,01/16/2024,AMAZON PURCHASE,50.00,Shopping";
+        let account = test_account();
+        let result = parse_csv_content(csv, &account, Some("discover")).unwrap();
+
+        assert_eq!(result.transactions.len(), 1);
+        assert_eq!(result.institution, Some("Discover".to_string()));
+        assert_eq!(result.transactions[0].description, "AMAZON PURCHASE");
+        // Discover shows expenses as positive, so they get negated
+        assert_eq!(result.transactions[0].amount.0, Decimal::from_str("-50.00").unwrap());
+    }
+
+    #[test]
+    fn test_parse_citi_csv() {
+        let csv = "Status,Date,Description,Debit,Credit\n\
+                   Cleared,01/15/2024,STORE PURCHASE,50.00,";
+        let account = test_account();
+        let result = parse_csv_content(csv, &account, Some("citi")).unwrap();
+
+        assert_eq!(result.transactions.len(), 1);
+        assert_eq!(result.institution, Some("Citi".to_string()));
+        assert_eq!(result.transactions[0].description, "STORE PURCHASE");
+        // Citi debit amounts get negated
+        assert_eq!(result.transactions[0].amount.0, Decimal::from_str("-50.00").unwrap());
+    }
+
+    #[test]
+    fn test_parse_capital_one_csv() {
+        let csv = "Transaction Date,Posted Date,Card No.,Description,Category,Debit,Credit\n\
+                   2024-01-15,2024-01-16,1234,COFFEE SHOP,Dining,5.00,";
+        let account = test_account();
+        let result = parse_csv_content(csv, &account, Some("capital_one")).unwrap();
+
+        assert_eq!(result.transactions.len(), 1);
+        assert_eq!(result.institution, Some("Capital One".to_string()));
+        assert_eq!(result.transactions[0].description, "COFFEE SHOP");
+        // Capital One debit amounts get negated
+        assert_eq!(result.transactions[0].amount.0, Decimal::from_str("-5.00").unwrap());
+    }
+
+    #[test]
+    fn test_parse_amex_csv() {
+        let csv = "Date,Description,Amount\n\
+                   01/15/2024,GROCERY STORE,75.00";
+        let account = test_account();
+        let result = parse_csv_content(csv, &account, Some("american_express")).unwrap();
+
+        assert_eq!(result.transactions.len(), 1);
+        assert_eq!(result.institution, Some("American Express".to_string()));
+        assert_eq!(result.transactions[0].description, "GROCERY STORE");
+        // AMEX shows expenses as positive, so they get negated
+        assert_eq!(result.transactions[0].amount.0, Decimal::from_str("-75.00").unwrap());
+    }
+
+    #[test]
+    fn test_parse_wealthfront_csv() {
+        let csv = "Date,Amount,Description,Balance\n\
+                   2024-01-15,-100.00,TRANSFER OUT,5000.00";
+        let account = test_account();
+        let result = parse_csv_content(csv, &account, Some("wealthfront")).unwrap();
+
+        assert_eq!(result.transactions.len(), 1);
+        assert_eq!(result.institution, Some("Wealthfront".to_string()));
+        assert_eq!(result.transactions[0].description, "TRANSFER OUT");
+        assert_eq!(result.transactions[0].amount.0, Decimal::from_str("-100.00").unwrap());
+    }
+
+    #[test]
+    fn test_parse_csv_with_errors() {
+        // CSV with one good row and one bad row (invalid date)
+        let csv = "Date,Amount,Description\n\
+                   2024-01-15,-50.00,Good Transaction\n\
+                   invalid-date,-25.00,Bad Transaction";
+        let account = test_account();
+        let result = parse_csv_content(csv, &account, None).unwrap();
+
+        // Should have one successful transaction and one error
+        assert_eq!(result.transactions.len(), 1);
+        assert_eq!(result.errors.len(), 1);
+        assert!(result.errors[0].contains("invalid-date"));
+    }
+
+    #[test]
+    fn test_parse_csv_auto_detect_chase() {
+        // Test that institution is auto-detected from headers
+        let csv = "Details,Posting Date,Description,Amount,Type,Balance\n\
+                   DEBIT,01/15/2024,TEST PURCHASE,-30.00,ACH,500.00";
+        let account = test_account();
+        let result = parse_csv_content(csv, &account, None).unwrap();
+
+        assert_eq!(result.institution, Some("Chase".to_string()));
+        assert_eq!(result.transactions.len(), 1);
+    }
 }

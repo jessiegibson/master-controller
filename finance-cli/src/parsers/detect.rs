@@ -124,19 +124,57 @@ fn contains_word(text: &str, word: &str) -> bool {
 pub fn detect_institution(content: &str) -> Institution {
     let lower = content.to_lowercase();
 
-    // Check institution-specific header patterns first (most reliable),
-    // then fall back to whole-word keyword matching to avoid false positives
+    // Check institution-specific header patterns first (most reliable)
+    // Chase: Details,Posting Date,Description,Amount,Type,Balance,Check or Slip #
+    if lower.contains("details,posting date,description,amount") {
+        return Institution::Chase;
+    }
+
+    // Bank of America: Date,Description,Amount,Running Bal.
+    if lower.contains("date,description,amount,running bal") {
+        return Institution::BankOfAmerica;
+    }
+
+    // Wealthfront: Date,Amount,Description,Balance
+    if lower.contains("date,amount,description,balance") && contains_word(&lower, "wealthfront") {
+        return Institution::Wealthfront;
+    }
+
+    // American Express: Date,Description,Amount (or Date,Reference,Amount)
+    if lower.contains("american express") || lower.contains("amex") {
+        return Institution::AmericanExpress;
+    }
+
+    // Ally: Date,Time,Amount,Type,Description
+    if lower.contains("date,time,amount,type,description") {
+        return Institution::Ally;
+    }
+
+    // Discover: Trans. Date,Post Date,Description,Amount,Category
+    if lower.contains("trans. date,post date,description,amount") {
+        return Institution::Discover;
+    }
+
+    // Citi: Status,Date,Description,Debit,Credit
+    if lower.contains("status,date,description,debit,credit") {
+        return Institution::Citi;
+    }
+
+    // Capital One: Transaction Date,Posted Date,Card No.,Description,Category,Debit,Credit
+    if lower.contains("transaction date,posted date,card no") {
+        return Institution::CapitalOne;
+    }
+
+    // Fall back to whole-word keyword matching to avoid false positives
     // (e.g. "chase" inside "purchase", "ally" inside "finally").
-    if lower.contains("details,posting date,description,amount") || contains_word(&lower, "chase") {
+    if contains_word(&lower, "chase") {
         Institution::Chase
-    } else if lower.contains("bank of america") || contains_word(&lower, "bofa") {
+    } else if contains_word(&lower, "bofa") {
         Institution::BankOfAmerica
     } else if contains_word(&lower, "wealthfront") {
         Institution::Wealthfront
     } else if contains_word(&lower, "ally") {
         Institution::Ally
-    } else if lower.contains("american express") || contains_word(&lower, "amex") {
-        Institution::AmericanExpress
     } else if contains_word(&lower, "discover") {
         Institution::Discover
     } else if contains_word(&lower, "citibank") || contains_word(&lower, "citi") {
@@ -199,7 +237,49 @@ impl Institution {
                 has_header: true,
                 negate_amounts: true, // AMEX shows expenses as positive
             },
-            _ => CsvMapping {
+            Institution::Ally => CsvMapping {
+                // Ally: Date, Time, Amount, Type, Description
+                date_column: 0,
+                amount_column: 2,
+                description_column: 4,
+                category_column: Some(3), // Type column
+                date_format: "%Y-%m-%d",
+                has_header: true,
+                negate_amounts: false,
+            },
+            Institution::Discover => CsvMapping {
+                // Discover: Trans. Date, Post Date, Description, Amount, Category
+                date_column: 0,
+                amount_column: 3,
+                description_column: 2,
+                category_column: Some(4),
+                date_format: "%m/%d/%Y",
+                has_header: true,
+                negate_amounts: true, // Discover shows expenses as positive
+            },
+            Institution::Citi => CsvMapping {
+                // Citi: Status, Date, Description, Debit, Credit
+                // Using Date for date, Description for description
+                // Amount column is Debit (index 3), but Citi uses separate debit/credit
+                date_column: 1,
+                amount_column: 3, // Debit column (negative amounts)
+                description_column: 2,
+                category_column: None,
+                date_format: "%m/%d/%Y",
+                has_header: true,
+                negate_amounts: true,
+            },
+            Institution::CapitalOne => CsvMapping {
+                // Capital One: Transaction Date, Posted Date, Card No., Description, Category, Debit, Credit
+                date_column: 0,
+                amount_column: 5, // Debit column
+                description_column: 3,
+                category_column: Some(4),
+                date_format: "%Y-%m-%d",
+                has_header: true,
+                negate_amounts: true,
+            },
+            Institution::Unknown => CsvMapping {
                 // Generic fallback
                 date_column: 0,
                 amount_column: 1,
@@ -231,7 +311,98 @@ mod tests {
 
     #[test]
     fn test_detect_institution_chase() {
-        let content = "Details,Posting Date,Description,Amount,Type,Balance\nDEBIT,01/15/2024,AMAZON,-50.00,ACH,1000.00";
+        let content = "Details,Posting Date,Description,Amount,Type,Balance,Check or Slip #\nDEBIT,01/15/2024,AMAZON,-50.00,ACH,1000.00,";
         assert_eq!(detect_institution(content), Institution::Chase);
+    }
+
+    #[test]
+    fn test_detect_institution_bofa() {
+        let content = "Date,Description,Amount,Running Bal.\n01/15/2024,PURCHASE AT STORE,-25.00,500.00";
+        assert_eq!(detect_institution(content), Institution::BankOfAmerica);
+    }
+
+    #[test]
+    fn test_detect_institution_ally() {
+        let content = "Date,Time,Amount,Type,Description\n2024-01-15,10:30:00,-50.00,Withdrawal,ATM Withdrawal";
+        assert_eq!(detect_institution(content), Institution::Ally);
+    }
+
+    #[test]
+    fn test_detect_institution_discover() {
+        let content = "Trans. Date,Post Date,Description,Amount,Category\n01/15/2024,01/16/2024,AMAZON,50.00,Shopping";
+        assert_eq!(detect_institution(content), Institution::Discover);
+    }
+
+    #[test]
+    fn test_detect_institution_citi() {
+        let content = "Status,Date,Description,Debit,Credit\nCleared,01/15/2024,PURCHASE,50.00,";
+        assert_eq!(detect_institution(content), Institution::Citi);
+    }
+
+    #[test]
+    fn test_detect_institution_capital_one() {
+        let content = "Transaction Date,Posted Date,Card No.,Description,Category,Debit,Credit\n2024-01-15,2024-01-16,1234,STORE PURCHASE,Shopping,50.00,";
+        assert_eq!(detect_institution(content), Institution::CapitalOne);
+    }
+
+    #[test]
+    fn test_detect_institution_amex() {
+        let content = "Date,Description,Amount\nAmerican Express Statement\n01/15/2024,STORE PURCHASE,50.00";
+        assert_eq!(detect_institution(content), Institution::AmericanExpress);
+    }
+
+    #[test]
+    fn test_csv_mapping_chase() {
+        let mapping = Institution::Chase.csv_mapping();
+        assert_eq!(mapping.date_column, 1);
+        assert_eq!(mapping.amount_column, 3);
+        assert_eq!(mapping.description_column, 2);
+        assert_eq!(mapping.date_format, "%m/%d/%Y");
+        assert!(!mapping.negate_amounts);
+    }
+
+    #[test]
+    fn test_csv_mapping_ally() {
+        let mapping = Institution::Ally.csv_mapping();
+        assert_eq!(mapping.date_column, 0);
+        assert_eq!(mapping.amount_column, 2);
+        assert_eq!(mapping.description_column, 4);
+        assert_eq!(mapping.date_format, "%Y-%m-%d");
+    }
+
+    #[test]
+    fn test_csv_mapping_discover() {
+        let mapping = Institution::Discover.csv_mapping();
+        assert_eq!(mapping.date_column, 0);
+        assert_eq!(mapping.amount_column, 3);
+        assert_eq!(mapping.description_column, 2);
+        assert!(mapping.negate_amounts);
+    }
+
+    #[test]
+    fn test_csv_mapping_citi() {
+        let mapping = Institution::Citi.csv_mapping();
+        assert_eq!(mapping.date_column, 1);
+        assert_eq!(mapping.amount_column, 3);
+        assert_eq!(mapping.description_column, 2);
+        assert!(mapping.negate_amounts);
+    }
+
+    #[test]
+    fn test_csv_mapping_capital_one() {
+        let mapping = Institution::CapitalOne.csv_mapping();
+        assert_eq!(mapping.date_column, 0);
+        assert_eq!(mapping.amount_column, 5);
+        assert_eq!(mapping.description_column, 3);
+        assert!(mapping.negate_amounts);
+    }
+
+    #[test]
+    fn test_contains_word() {
+        assert!(contains_word("hello world", "hello"));
+        assert!(contains_word("hello world", "world"));
+        assert!(!contains_word("hello world", "ello"));
+        assert!(!contains_word("purchase", "chase"));
+        assert!(!contains_word("finally", "ally"));
     }
 }
