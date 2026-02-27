@@ -1,11 +1,16 @@
 """
-State Store
+State Store (DEPRECATED)
 
-Simple state persistence for workflow execution.
-Stores execution history and state as JSON files.
+This module is deprecated. All state tracking has been consolidated into the
+kanban SQLite database via KanbanManager. The JSON files in workflow/ are kept
+as read-only historical archives.
 
-For MVP: File-based storage
-Future: Migrate to SQLite as specified in context_manager.md
+Use KanbanManager instead:
+    from orchestrator.kanban_manager import KanbanManager
+    km = KanbanManager()  # reads kanban-cli/kanban/tasks.db
+    km.start_agent_execution(...)
+    km.get_agent_executions(...)
+    km.get_current_workflow_state()
 """
 
 import json

@@ -1,1 +1,11 @@
-{}
+{
+  "alwaysUpdateLinks": true,
+  "showUnsupportedFiles": true,
+  "userIgnoreFilters": [
+    "target/",
+    "agents-mcp/__pycache__/",
+    "finance-cli/target/",
+    "finance-cli/tests/",
+    "kanban-cli/target/"
+  ]
+}

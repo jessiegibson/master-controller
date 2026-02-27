@@ -11,13 +11,14 @@
             "id": "128aa409544262cf",
             "type": "leaf",
             "state": {
-              "type": "bases",
+              "type": "markdown",
               "state": {
-                "file": "Untitled.base",
-                "viewName": "Table"
+                "file": "context/artifacts/v1/cli_developer/cli_developer_output.md",
+                "mode": "source",
+                "source": false
               },
-              "icon": "lucide-table",
-              "title": "Untitled"
+              "icon": "lucide-file",
+              "title": "cli_developer_output"
             }
           }
         ]
@@ -184,26 +185,28 @@
   },
   "active": "128aa409544262cf",
   "lastOpenFiles": [
+    "finance-cli/src/target/rust-analyzer/flycheck0/stdout",
+    "finance-cli/src/target/rust-analyzer/flycheck0/stderr",
+    "finance-cli/src/target/rust-analyzer/flycheck0",
+    "finance-cli/src/target/rust-analyzer",
+    "finance-cli/src/target",
+    "prompts/categorization_engine_developer.md",
+    "finance-cli/target/debug/incremental/finance_cli-1sttj2bwl3mj8/s-hfngut1nzg-0g402gn-59curhxe3gmkhrld31buk50uu/work-products.bin",
+    "finance-cli/target/debug/incremental/finance_cli-1sttj2bwl3mj8/s-hfngut1nzg-0g402gn-59curhxe3gmkhrld31buk50uu/query-cache.bin",
+    "finance-cli/target/debug/incremental/finance_cli-1sttj2bwl3mj8/s-hfngut1nzg-0g402gn-59curhxe3gmkhrld31buk50uu/emt15llfhhc2rd45rf3lyck44.o",
+    "finance-cli/target/debug/incremental/finance_cli-1sttj2bwl3mj8/s-hfngut1nzg-0g402gn-59curhxe3gmkhrld31buk50uu/ekys3qyjj8r9enbeq82bkupnq.o",
+    "finance-cli/target/debug/incremental/finance_cli-1sttj2bwl3mj8/s-hfngut1nzg-0g402gn-59curhxe3gmkhrld31buk50uu/e85gxn5aci22vpmmy5gj809ku.o",
+    "finance-cli/target/debug/incremental/finance_cli-1sttj2bwl3mj8/s-hfngut1nzg-0g402gn-59curhxe3gmkhrld31buk50uu/dep-graph.bin",
+    "context/artifacts/v1/categorization_engine_developer/categorization_engine_developer_output.md",
+    "context/requirements_answers.md",
     "2026-01-27.md",
-    "Untitled.base",
     "workflow/status_report.md",
     "workflow/artifacts/test_developer/test_developer_output.md",
     "prompts/cli_developer.md",
-    "prompts/categorization_engine_developer.md",
     "docs/zed-mcp-setup.md",
     "prompts/documentation_writer.md",
     "workflow/artifacts/categorization_engine_developer/categorization_engine_developer_output.md",
-    "context/requirements_answers.md",
     "workflow/artifacts/data_architect/data_architect_output.md",
-    "kanban-cli/target/debug/incremental/kanban-1f1z059r1i7dp/s-hf3oo2u3fn-0yc9piy-0q6xjkq8k7wy3jwb8i1c96omv/work-products.bin",
-    "kanban-cli/target/debug/incremental/kanban-1f1z059r1i7dp/s-hf3oo2u3fn-0yc9piy-0q6xjkq8k7wy3jwb8i1c96omv/query-cache.bin",
-    "kanban-cli/target/debug/incremental/kanban-1f1z059r1i7dp/s-hf3oo2u3fn-0yc9piy-0q6xjkq8k7wy3jwb8i1c96omv/dep-graph.bin",
-    "kanban-cli/target/debug/incremental/kanban-1f1z059r1i7dp/s-hf3oo2u3fn-0yc9piy-0q6xjkq8k7wy3jwb8i1c96omv",
-    "kanban-cli/target/debug/deps/libkanban-b52163954e7cbc7d.rmeta",
-    "kanban-cli/target/debug/incremental/kanban-1xjixy50w0x4v/s-hf3oo2u3h6-0i32qea-9nnhjzaqkcr5khagpanuxjh9j/work-products.bin",
-    "kanban-cli/target/debug/incremental/kanban-1xjixy50w0x4v/s-hf3oo2u3h6-0i32qea-9nnhjzaqkcr5khagpanuxjh9j/query-cache.bin",
-    "kanban-cli/target/debug/incremental/kanban-1xjixy50w0x4v/s-hf3oo2u3h6-0i32qea-9nnhjzaqkcr5khagpanuxjh9j/dep-graph.bin",
-    "kanban-cli/target/debug/incremental/kanban-1xjixy50w0x4v/s-hf3oo2u3h6-0i32qea-9nnhjzaqkcr5khagpanuxjh9j",
     "prompts/status-summarizer.md",
     "agents/prompts/status-summarizer.md",
     "finance-cli/target/debug/build/rust_decimal-f0f36a13d4fe9f5a/out/README-lib.md",
@@ -213,7 +216,6 @@
     "context/artifacts/v1/cli_developer/cli_developer_output.md",
     "context/artifacts/v1/financial_calculator_developer/financial_calculator_developer_output.md",
     "workflow/artifacts/financial_calculator_developer/financial_calculator_developer_output.md",
-    "context/artifacts/v1/categorization_engine_developer/categorization_engine_developer_output.md",
     "context/artifacts/v1/code_reviewer/code_reviewer_output.md",
     "workflow/artifacts/code_reviewer/code_reviewer_output.md",
     "context/artifacts/v1/parser_developer/parser_developer_output.md",

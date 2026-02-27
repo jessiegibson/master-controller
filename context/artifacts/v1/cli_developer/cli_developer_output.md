@@ -1,6 +1,6 @@
 # Sprint S1-17: CLI Implementation
 
-I'll implement the command-line interface using clap for the Finance CLI application, following the specifications and integrating with all other modules.
+I'll implement the command-line interface using clap for the [Finance CLI](/Users/jag/workspace/github.com/jessiegibson/agents/finance-cli) application, following the specifications and integrating with all other modules.
 
 ## File Structure
 

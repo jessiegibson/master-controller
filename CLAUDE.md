@@ -8,7 +8,7 @@ This is a **multi-agent software development orchestration system** designed to 
 
 ### Completed Work
 
-**All 31 agent prompts are complete** and located in `/agents/prompts/`. Each agent has a detailed prompt defining:
+**All 32 agent prompts are complete** and located in `/prompts/`. Each agent has a detailed prompt defining:
 - Identity and role
 - Core objectives
 - Input/output formats
@@ -21,39 +21,41 @@ This is a **multi-agent software development orchestration system** designed to 
 agent-orchestrator/
 ├── CLAUDE.md                    # This file - project context
 ├── agents/
-│   ├── config/
-│   │   └── agents.yaml          # Agent registry (all 31 active)
-│   └── prompts/                 # All 31 agent prompts
-│       ├── requirements-gatherer.md
-│       ├── product-roadmap-planner.md
-│       ├── system-architect.md
-│       ├── data-architect.md
-│       ├── security-architect.md
-│       ├── consulting-cpa.md
-│       ├── workflow-orchestrator.md
-│       ├── staff-engineer-python.md
-│       ├── staff-engineer-rust.md
-│       ├── ml-architect.md
-│       ├── cli-ux-designer.md
-│       ├── debugger.md
-│       ├── repository-librarian.md
-│       ├── project-manager.md
-│       ├── code-reviewer.md
-│       ├── rust-scaffolder.md
-│       ├── kanban-manager.md
-│       ├── output-validator.md
-│       ├── duckdb-developer.md
-│       ├── parser-developer.md
-│       ├── context-manager.md
-│       ├── categorization-engine-developer.md
-│       ├── financial-calculator-developer.md
-│       ├── encryption-developer.md
-│       ├── cli-developer.md
-│       ├── test-developer.md
-│       ├── ml-engineer.md
-│       ├── documentation-writer.md
-│       ├── prompt-skill-engineer.md
-│       └── infrastructure-agent.md
+│   └── config/
+│       └── agents.yaml          # Agent registry (all 31 active)
+├── prompts/                     # All 32 agent prompts
+│   ├── requirements_gatherer.md
+│   ├── product_roadmap_planner.md
+│   ├── system_architect.md
+│   ├── data_architect.md
+│   ├── security_architect.md
+│   ├── consulting_cpa.md
+│   ├── workflow_orchestrator.md
+│   ├── python_staff_engineer.md
+│   ├── rust_staff_engineer.md
+│   ├── ML_architect.md
+│   ├── cli_ux_designer.md
+│   ├── debugger.md
+│   ├── repository_librarian.md
+│   ├── project_manager.md
+│   ├── code_reviewer.md
+│   ├── rust_scaffolder.md
+│   ├── kanban_manager.md
+│   ├── output_validator.md
+│   ├── duckdb_developer.md
+│   ├── parser_developer.md
+│   ├── context_manager.md
+│   ├── categorization_engine_developer.md
+│   ├── financial_calculator_developer.md
+│   ├── encryption_developer.md
+│   ├── cli_developer.md
+│   ├── test_developer.md
+│   ├── ml_engineer.md
+│   ├── documentation_writer.md
+│   ├── prompt_skill_engineer.md
+│   ├── infrastructure_agent.md
+│   ├── feature-builder.md
+│   └── status-summarizer.md
 ├── context/                     # Context Manager storage (to be created)
 ├── kanban/                      # Kanban task database (to be created)
 └── schemas/                     # Output validation schemas (to be created)
@@ -150,7 +152,7 @@ phases:
 ### 3. Agent Runner
 
 The agent runner:
-1. Loads agent prompt from `/agents/prompts/{agent_name}.md`
+1. Loads agent prompt from `/prompts/{agent_name}.md`
 2. Assembles context from Context Manager (dependent artifacts)
 3. Formats the task input
 4. Executes the agent (calls Claude API or runs in Claude Code)
@@ -317,7 +319,7 @@ Tech stack: **Rust**, **DuckDB**, **clap**, **AES-GCM**, **Argon2**
 ### Option 1: Manual Agent Execution
 
 Run agents one at a time:
-1. Read agent prompt from `/agents/prompts/{agent}.md`
+1. Read agent prompt from `/prompts/{agent}.md`
 2. Provide relevant context (previous agent outputs)
 3. Execute agent task
 4. Save output to `/context/artifacts/`
@@ -353,20 +355,20 @@ Use Claude Code to:
 | File | Purpose |
 |------|---------|
 | `agents/config/agents.yaml` | Agent registry with all 31 agents |
-| `agents/prompts/workflow-orchestrator.md` | Orchestration patterns |
-| `agents/prompts/context-manager.md` | Storage architecture |
-| `agents/prompts/kanban-manager.md` | Task tracking schema |
-| `agents/prompts/output-validator.md` | Validation schemas |
-| `agents/prompts/project-manager.md` | Progress tracking |
+| `prompts/workflow_orchestrator.md` | Orchestration patterns |
+| `prompts/context_manager.md` | Storage architecture |
+| `prompts/kanban_manager.md` | Task tracking schema |
+| `prompts/output_validator.md` | Validation schemas |
+| `prompts/project_manager.md` | Progress tracking |
 
 ## Commands for Claude Code
 
 ```bash
 # View all agent prompts
-ls agents/prompts/
+ls prompts/
 
 # View specific agent prompt
-cat agents/prompts/workflow-orchestrator.md
+cat prompts/workflow_orchestrator.md
 
 # View agent registry
 cat agents/config/agents.yaml
