@@ -34,7 +34,11 @@
       "Bash(git status:*)",
       "Bash(git -C /Users/jag/workspace/github.com/jessiegibson/agents status --short CLAUDE.md)",
       "Bash(git -C /Users/jag/workspace/github.com/jessiegibson/agents add CLAUDE.md)",
-      "Bash(git -C:*)"
+      "Bash(git -C:*)",
+      "Bash(grep:*)",
+      "Bash(python -m orchestrator.migrate_to_kanban:*)",
+      "mcp__agents-mcp__get_agent_dependencies",
+      "mcp__agents-mcp__suggest_agent"
     ]
   }
 }
