@@ -18,7 +18,7 @@ This is a **multi-agent software development orchestration system** designed to 
 ### Directory Structure
 
 ```
-agent-orchestrator/
+master-controller/              # Orchestrator repo (jessiegibson/master-controller)
 ├── CLAUDE.md                    # This file - project context
 ├── agents/
 │   └── config/
@@ -56,9 +56,25 @@ agent-orchestrator/
 │   ├── infrastructure_agent.md
 │   ├── feature-builder.md
 │   └── status-summarizer.md
-├── context/                     # Context Manager storage (to be created)
-├── kanban/                      # Kanban task database (to be created)
-└── schemas/                     # Output validation schemas (to be created)
+├── orchestrator/                # Python orchestration engine
+├── kanban-cli/                  # Task tracking TUI
+├── context/                     # Context Manager storage
+├── kanban/                      # Kanban task database
+├── schemas/                     # Output validation schemas
+│
+└── finance-cli/                 # GIT SUBMODULE → jessiegibson/finance-cli
+    ├── src/                     # Rust source (committed to finance-cli repo)
+    ├── Cargo.toml
+    ├── README.md
+    └── (no prompts, no Python, clean Rust project)
+
+jessiegibson/finance-cli/       # Standalone repo (separate GitHub repo)
+├── src/                         # All Rust source with extracted history
+├── Cargo.toml
+├── Cargo.lock
+├── README.md
+├── benches/
+└── tests/
 ```
 
 ## What Needs to Be Built Next: Orchestration System
@@ -270,9 +286,14 @@ Tech stack: **Rust**, **DuckDB**, **clap**, **AES-GCM**, **Argon2**
 
 ## Git Workflow
 
-**All development follows a feature branch workflow.** Each feature gets its own branch, and all commits are pushed to GitHub.
+**Two-Repository Structure:** The finance-cli is now a **git submodule** of master-controller.
+
+- **master-controller** (`jessiegibson/master-controller.git`) - Orchestrator, prompts, context, kanban
+- **finance-cli** (`jessiegibson/finance-cli.git`) - Standalone Rust application (submodule)
 
 ### Feature Branch Process
+
+#### For Orchestrator/Prompt/Kanban Changes (in master-controller):
 
 1. **Start a new feature:**
    ```bash
@@ -295,24 +316,64 @@ Tech stack: **Rust**, **DuckDB**, **clap**, **AES-GCM**, **Argon2**
    git push -u github feature/your-feature-name
    ```
 
-4. **After feature complete:**
-   - Create a pull request on GitHub
-   - Merge to main after review
-   - Delete the feature branch
+#### For Finance-CLI Changes (in the submodule):
+
+1. **Enter the submodule directory and start a feature:**
+   ```bash
+   cd finance-cli
+
+   # Checkout main and pull latest in the submodule
+   git checkout main
+   git pull origin main
+
+   # Create feature branch (use kebab-case naming)
+   git checkout -b feature/your-feature-name
+   ```
+
+2. **During development:**
+   - Make commits as work progresses
+   - Use descriptive commit messages (imperative mood)
+   - Include `Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>` in commits
+
+3. **Push to GitHub (from submodule):**
+   ```bash
+   # Inside finance-cli/ directory, push to finance-cli repo
+   git push -u origin feature/your-feature-name
+   ```
+
+4. **Update the submodule pointer in master-controller:**
+   ```bash
+   # Go back to master-controller root
+   cd ..
+
+   # Stage the submodule update
+   git add finance-cli
+
+   # Commit with reference to the finance-cli feature
+   git commit -m "Update finance-cli submodule: [description of finance-cli changes]"
+
+   # Push the master-controller update
+   git push github main
+   ```
 
 ### Branch Naming Convention
 
-- `feature/` - New features (e.g., `feature/kanban-cli`, `feature/tui-dashboard`)
-- `fix/` - Bug fixes (e.g., `fix/task-state-validation`)
-- `refactor/` - Code refactoring (e.g., `refactor/database-layer`)
-- `docs/` - Documentation updates (e.g., `docs/api-reference`)
+- `feature/` - New features (e.g., `feature/feedback-loop`, `feature/ml-training`)
+- `fix/` - Bug fixes (e.g., `fix/categorization-bug`)
+- `refactor/` - Code refactoring (e.g., `refactor/encryption-module`)
+- `docs/` - Documentation updates (e.g., `docs/user-guide`)
 
 ### Remote Configuration
 
-- `github` - Primary remote for GitHub (git@github.com:jessiegibson/master-controller.git)
-- `origin` - Local network backup
+- **master-controller remotes:**
+  - `github` - Primary remote (git@github.com:jessiegibson/master-controller.git)
+  - `origin` - Local network backup
 
-**Always push to `github` remote** when pushing to GitHub.
+- **finance-cli remotes (inside `finance-cli/` submodule):**
+  - `origin` - Primary remote (git@github.com:jessiegibson/finance-cli.git)
+
+**When working on finance-cli:** Always commit and push from **inside the `finance-cli/` directory** to `origin`.
+**When working on orchestrator/prompts/kanban:** Always commit and push from **master-controller root** to `github`.
 
 ## How to Use This System
 

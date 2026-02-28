@@ -6,6 +6,15 @@ Executes individual agents by:
 2. Assembling context
 3. Calling LLM API
 4. Returning structured output
+
+NOTE: finance-cli is a git submodule (jessiegibson/finance-cli).
+When agents commit finance-cli changes, use this pattern:
+  - Stage/commit in finance-cli/ with working directory = finance-cli/
+  - Push to 'origin' remote (finance-cli repo)
+  - Update submodule pointer in master-controller by adding finance-cli/
+  - Push master-controller to 'github' remote
+
+See CLAUDE.md "Git Workflow" section for detailed instructions.
 """
 
 import os
