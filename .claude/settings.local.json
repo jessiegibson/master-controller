@@ -38,7 +38,9 @@
       "Bash(grep:*)",
       "Bash(python -m orchestrator.migrate_to_kanban:*)",
       "mcp__agents-mcp__get_agent_dependencies",
-      "mcp__agents-mcp__suggest_agent"
+      "mcp__agents-mcp__suggest_agent",
+      "Bash(python:*)",
+      "Bash(chmod +x:*)"
     ]
   }
 }
