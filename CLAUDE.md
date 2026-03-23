@@ -17,62 +17,28 @@ This is a **multi-agent software development orchestration system** designed to 
 
 ### Directory Structure
 
+The project is split across two **independent** repositories with no submodule relationship:
+
 ```
-master-controller/              # Orchestrator repo (jessiegibson/master-controller)
+jessiegibson/agents/             # Orchestrator repo (jessiegibson/master-controller)
 ├── CLAUDE.md                    # This file - project context
 ├── agents/
 │   └── config/
 │       └── agents.yaml          # Agent registry (all 31 active)
 ├── prompts/                     # All 32 agent prompts
-│   ├── requirements_gatherer.md
-│   ├── product_roadmap_planner.md
-│   ├── system_architect.md
-│   ├── data_architect.md
-│   ├── security_architect.md
-│   ├── consulting_cpa.md
-│   ├── workflow_orchestrator.md
-│   ├── python_staff_engineer.md
-│   ├── rust_staff_engineer.md
-│   ├── ML_architect.md
-│   ├── cli_ux_designer.md
-│   ├── debugger.md
-│   ├── repository_librarian.md
-│   ├── project_manager.md
-│   ├── code_reviewer.md
-│   ├── rust_scaffolder.md
-│   ├── kanban_manager.md
-│   ├── output_validator.md
-│   ├── duckdb_developer.md
-│   ├── parser_developer.md
-│   ├── context_manager.md
-│   ├── categorization_engine_developer.md
-│   ├── financial_calculator_developer.md
-│   ├── encryption_developer.md
-│   ├── cli_developer.md
-│   ├── test_developer.md
-│   ├── ml_engineer.md
-│   ├── documentation_writer.md
-│   ├── prompt_skill_engineer.md
-│   ├── infrastructure_agent.md
-│   ├── feature-builder.md
-│   └── status-summarizer.md
 ├── orchestrator/                # Python orchestration engine
+├── workflows/                   # Workflow YAML definitions
 ├── kanban-cli/                  # Task tracking TUI
 ├── context/                     # Context Manager storage
 ├── kanban/                      # Kanban task database
 ├── schemas/                     # Output validation schemas
-│
-└── finance-cli/                 # GIT SUBMODULE → jessiegibson/finance-cli
-    ├── src/                     # Rust source (committed to finance-cli repo)
-    ├── Cargo.toml
-    ├── README.md
-    └── (no prompts, no Python, clean Rust project)
+└── run_workflow.py              # CLI entry point for workflows
 
-jessiegibson/finance-cli/       # Standalone repo (separate GitHub repo)
-├── src/                         # All Rust source with extracted history
+jessiegibson/finance-cli/        # Standalone repo (separate GitHub repo)
+├── src/                         # Rust source (12,000+ lines, 17 modules)
 ├── Cargo.toml
 ├── Cargo.lock
-├── README.md
+├── docs/
 ├── benches/
 └── tests/
 ```
@@ -284,24 +250,157 @@ The agents are building a **privacy-first personal finance CLI** with:
 
 Tech stack: **Rust**, **DuckDB**, **clap**, **AES-GCM**, **Argon2**
 
+## Apple On-Device ML: Speaker Audio Classification
+
+The application can leverage Apple's on-device ML frameworks to classify speaker audio locally, without sending audio data to the cloud. This aligns with the project's privacy-first philosophy.
+
+### Relevant Apple Frameworks
+
+| Framework | Role |
+|-----------|------|
+| **SoundAnalysis** | High-level API for classifying audio streams and files |
+| **CoreML** | Runtime for loading and running `.mlmodel` files on-device |
+| **Create ML** | Tool for training custom audio classifiers on macOS |
+| **Speech** | On-device speech recognition (speaker diarization support) |
+
+### Architecture: Audio → Classification Pipeline
+
+```
+Audio Input (microphone / file)
+        │
+        ▼
+AVAudioEngine (capture / read)
+        │
+        ▼
+SNAudioStreamAnalyzer  ←── SoundAnalysis framework
+        │
+        ├── Built-in classifier: SNClassifySoundRequest
+        │       (100+ sound categories, no model file needed)
+        │
+        └── Custom classifier: SNClassifyRequest(mlModel:)
+                (load a .mlmodel trained with Create ML)
+        │
+        ▼
+SNClassificationResult
+  └── classifications: [SNClassification]
+        └── identifier: String   (e.g. "speech", "silence", "noise")
+        └── confidence: Double
+```
+
+### Integration Approach (Swift / Objective-C)
+
+The finance CLI could expose audio classification as a macOS companion tool or Swift CLI. Key steps:
+
+**1. Stream audio from microphone:**
+```swift
+import SoundAnalysis
+import AVFoundation
+
+let engine = AVAudioEngine()
+let inputNode = engine.inputNode
+let bus = 0
+let inputFormat = inputNode.outputFormat(forBus: bus)
+
+let streamAnalyzer = SNAudioStreamAnalyzer(format: inputFormat)
+```
+
+**2. Attach a classification request:**
+```swift
+// Built-in sound classifier (no model needed)
+let request = try SNClassifySoundRequest(classifierIdentifier: .version1)
+request.windowDuration = CMTimeMakeWithSeconds(1.5, preferredTimescale: 48_000)
+request.overlapFactor = 0.5
+
+try streamAnalyzer.add(request, withObserver: resultsObserver)
+```
+
+**3. Process results in the observer:**
+```swift
+class ResultsObserver: NSObject, SNResultsObserving {
+    func request(_ request: SNRequest, didProduce result: SNResult) {
+        guard let result = result as? SNClassificationResult else { return }
+        let topClass = result.classifications.first
+        print("Detected: \(topClass?.identifier ?? "unknown") @ \(topClass?.confidence ?? 0)")
+    }
+}
+```
+
+**4. Train a custom speaker classifier with Create ML (macOS):**
+```swift
+// In a Swift Playground or Create ML app
+import CreateML
+
+let trainingData = try MLSoundClassifier.DataSource.labeledDirectories(at: trainingURL)
+let classifier = try MLSoundClassifier(trainingData: trainingData)
+try classifier.write(to: URL(fileURLWithPath: "SpeakerClassifier.mlmodel"))
+```
+
+### Privacy Guarantees
+
+- All inference runs **on-device** via CoreML — no audio leaves the machine
+- `SNClassifySoundRequest` with `.version1` uses Apple's pre-trained model bundled with macOS (no download)
+- Custom `.mlmodel` files are local and version-controlled
+- Compatible with macOS sandboxing (microphone entitlement required)
+
+### Use Cases in Finance CLI Context
+
+| Use Case | Implementation |
+|----------|---------------|
+| Voice memo import | Detect speech segments, transcribe with `Speech` framework |
+| Speaker diarization | Label audio segments by speaker identity using a custom classifier |
+| Ambient noise filtering | Use SoundAnalysis to skip non-speech frames before transcription |
+| Hands-free command input | Trigger CLI commands via detected wake phrases |
+
+### Platform Requirements
+
+- **macOS 10.15+** for `SoundAnalysis` / `SNAudioStreamAnalyzer`
+- **macOS 11+** for `SNClassifySoundRequest(classifierIdentifier:)` built-in model
+- **Xcode 12+** / **Create ML** for training custom classifiers
+- Microphone entitlement (`com.apple.security.device.audio-input`) if capturing live audio
+
+### Rust Integration Strategy
+
+Since finance-cli is Rust-based, Apple ML frameworks require a bridge layer:
+
+```
+finance-cli (Rust CLI)
+        │
+        └── spawns / calls ──▶ swift-audio-classifier (Swift CLI tool)
+                                      │
+                                      └── SoundAnalysis + CoreML
+                                              │
+                                              └── outputs JSON results
+                                                  back to Rust via stdout
+```
+
+The Swift tool outputs structured JSON:
+```json
+{
+  "segments": [
+    { "start_ms": 0, "end_ms": 1500, "label": "speech", "confidence": 0.97 },
+    { "start_ms": 1500, "end_ms": 3000, "label": "silence", "confidence": 0.99 }
+  ]
+}
+```
+
+Rust reads this via `std::process::Command` and parses with `serde_json`.
+
 ## Git Workflow
 
-**Two-Repository Structure:** The finance-cli is now a **git submodule** of master-controller.
+**Two Independent Repositories** — no submodule relationship.
 
-- **master-controller** (`jessiegibson/master-controller.git`) - Orchestrator, prompts, context, kanban
-- **finance-cli** (`jessiegibson/finance-cli.git`) - Standalone Rust application (submodule)
+- **agents** (`jessiegibson/master-controller.git`) — Orchestrator, prompts, context, kanban
+  - Local path: `~/workspace/github.com/jessiegibson/agents/`
+  - Remote: `github` (primary), `origin` (local backup)
+- **finance-cli** (`jessiegibson/finance-cli.git`) — Standalone Rust CLI application
+  - Local path: `~/workspace/github.com/jessiegibson/finance-cli/`
+  - Remote: `origin` (primary)
 
 ### Feature Branch Process
 
-#### For Orchestrator/Prompt/Kanban Changes (in master-controller):
-
 1. **Start a new feature:**
    ```bash
-   # Checkout main and pull latest
-   git checkout main
-   git pull github main
-
-   # Create feature branch (use kebab-case naming)
+   git checkout main && git pull
    git checkout -b feature/your-feature-name
    ```
 
@@ -312,48 +411,11 @@ Tech stack: **Rust**, **DuckDB**, **clap**, **AES-GCM**, **Argon2**
 
 3. **Push to GitHub:**
    ```bash
-   # Push feature branch to GitHub
+   # From agents repo
    git push -u github feature/your-feature-name
-   ```
 
-#### For Finance-CLI Changes (in the submodule):
-
-1. **Enter the submodule directory and start a feature:**
-   ```bash
-   cd finance-cli
-
-   # Checkout main and pull latest in the submodule
-   git checkout main
-   git pull origin main
-
-   # Create feature branch (use kebab-case naming)
-   git checkout -b feature/your-feature-name
-   ```
-
-2. **During development:**
-   - Make commits as work progresses
-   - Use descriptive commit messages (imperative mood)
-   - Include `Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>` in commits
-
-3. **Push to GitHub (from submodule):**
-   ```bash
-   # Inside finance-cli/ directory, push to finance-cli repo
+   # From finance-cli repo
    git push -u origin feature/your-feature-name
-   ```
-
-4. **Update the submodule pointer in master-controller:**
-   ```bash
-   # Go back to master-controller root
-   cd ..
-
-   # Stage the submodule update
-   git add finance-cli
-
-   # Commit with reference to the finance-cli feature
-   git commit -m "Update finance-cli submodule: [description of finance-cli changes]"
-
-   # Push the master-controller update
-   git push github main
    ```
 
 ### Branch Naming Convention
@@ -362,18 +424,6 @@ Tech stack: **Rust**, **DuckDB**, **clap**, **AES-GCM**, **Argon2**
 - `fix/` - Bug fixes (e.g., `fix/categorization-bug`)
 - `refactor/` - Code refactoring (e.g., `refactor/encryption-module`)
 - `docs/` - Documentation updates (e.g., `docs/user-guide`)
-
-### Remote Configuration
-
-- **master-controller remotes:**
-  - `github` - Primary remote (git@github.com:jessiegibson/master-controller.git)
-  - `origin` - Local network backup
-
-- **finance-cli remotes (inside `finance-cli/` submodule):**
-  - `origin` - Primary remote (git@github.com:jessiegibson/finance-cli.git)
-
-**When working on finance-cli:** Always commit and push from **inside the `finance-cli/` directory** to `origin`.
-**When working on orchestrator/prompts/kanban:** Always commit and push from **master-controller root** to `github`.
 
 ## How to Use This System
 
