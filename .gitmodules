@@ -1,3 +1,0 @@
-[submodule "finance-cli"]
-	path = finance-cli
-	url = git@github.com:jessiegibson/finance-cli.git
